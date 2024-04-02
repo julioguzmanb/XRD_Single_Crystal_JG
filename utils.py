@@ -14,7 +14,8 @@ c_M = 5.5479
 beta_M = 96.760
 V_M = a_M*b_M*c_M*np.sin(beta_M*np.pi/180)
 
-""" #I am still thinking whether is better to use quaternions or not...
+""" 
+#I am still thinking whether is better to use quaternions or not...
 def apply_rotation(initial_matrix, rotx = 0, roty = 0, rotz = 0):
     rotx = np.radians(rotx)
     roty = np.radians(roty)
@@ -47,11 +48,11 @@ def apply_rotation(initial_matrix, rotx = 0, roty = 0, rotz = 0):
 
 """
 
-
+#"""
 def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0):
     rotation_quaternion_x = R.from_euler('x', rotx, degrees=True).as_quat()
     rotation_quaternion_y = R.from_euler('y', roty, degrees=True).as_quat()
-    rotation_quaternion_z = R.from_euler('z', rotz, degrees=True).as_quat()
+    rotation_quaternion_z = R.from_euler('z', -rotz, degrees=True).as_quat()
 
     total_rotation_quaternion = R.from_quat(rotation_quaternion_x) * R.from_quat(rotation_quaternion_y) * R.from_quat(rotation_quaternion_z)
 
@@ -60,6 +61,9 @@ def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0):
     rotated_matrix = np.dot(initial_matrix, total_rotation_matrix)
     
     return rotated_matrix
+
+#"""
+
 
 """
 def forbidden_reflections(phase, hkl):
@@ -199,23 +203,38 @@ def check_Bragg_condition(Q_hkl, wavelength, E_bandwidth):
             
     return Bragg_Condition
 
+
 def diffraction_direction(Q_hkl, wavelength, sample_detector_distance, tilting_angle):
-
     tilting_angle = np.radians(tilting_angle)
-
     ki = np.array([2*np.pi/wavelength, 0, 0])
-    kf =  Q_hkl + ki
-
-    dy = kf[1]*(wavelength/(2*np.pi))*sample_detector_distance
-    dz = (kf[2]*(wavelength/(2*np.pi))/(np.cos(tilting_angle) + kf[2]*(wavelength/(2*np.pi))*np.sin(tilting_angle)))*sample_detector_distance
-
+    kf = Q_hkl + ki
+    
+    dx, dy, dz = 0, 0, 0
+    
+    kfxy = kf.copy()
+    kfxy[2] = 0
+    
+    kfxz = kf.copy()
+    kfxz[1] = 0
+    
     if kf[0] > 0:
         dx = 1
-    else:
-        dx = 0
-
     
-    return (dx, dy, dz)
+    try:
+        dy = np.sign(kf[1]) * sample_detector_distance * np.tan(np.arccos(np.dot(kfxy, ki) / (np.linalg.norm(kfxy) * np.linalg.norm(ki))))
+    except ZeroDivisionError:
+        pass
+    
+    try:
+        denominator = np.dot(kfxz, ki) / (np.linalg.norm(kfxz) * np.linalg.norm(ki))
+        if abs(denominator) < 1:
+            numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator))
+            dz = np.sign(kf[2]) * sample_detector_distance / (numerator + np.sin(tilting_angle))
+    except ZeroDivisionError:
+        pass
+    
+    return dx, dy, dz
+
 
 def diffraction_in_detector(dx, dy, dz, max_detectable_z, max_detectable_y, margin = 0):
     safety = 1 - margin/100 #% of margin from the detector edges
