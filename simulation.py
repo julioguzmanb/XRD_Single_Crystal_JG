@@ -1,18 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import itertools
-import XRD_Single_Crystal.utils as utils
-import XRD_Single_Crystal.plot as plot
+import XRD_Single_Crystal_JG.utils as utils
+import XRD_Single_Crystal_JG.plot as plot
 plt.ion()
 
-def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number):
+def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None):
 
     #Creating lattice structure
     if phase == "Monoclinic":
-        lattice_structure = utils.Monoclinic_Lattice()
+        lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
     
     elif phase == "Hexagonal":
-        lattice_structure = utils.Hexagonal_Lattice() 
+        lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation) 
 
     #Rotating the crystal
     lattice_structure.Apply_Rotation(rotx, roty, rotz)
@@ -28,17 +28,17 @@ def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_
 
     plot.plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth)
 
-def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, tilting_angle, wavelength, E_bandwidth, smallest_number, largest_number):
+def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, tilting_angle, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None):
 
     #Creating detector instance
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle)
 
     #Creating lattice structure
     if phase == "Monoclinic":
-        lattice_structure = utils.Monoclinic_Lattice()
+        lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
     
     elif phase == "Hexagonal":
-        lattice_structure = utils.Hexagonal_Lattice()
+        lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation)
 
     #Rotating the crystal
     lattice_structure.Apply_Rotation(rotx, roty, rotz)
@@ -90,7 +90,7 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, tiltin
     elif counter >=2:
         plot.plot_detector(data, colorize = True)
 
-def mapping(phase, detector, sample_detector_distance, tilting_angle, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, smallest_number = -6, largest_number = 6, plot_singles = False, plot_doubles = False, plot_triples = False, plot_fourths = False, plot_more_than_four = False):
+def mapping(phase, detector, sample_detector_distance, tilting_angle, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, smallest_number = -6, largest_number = 6, plot_singles = False, plot_doubles = False, plot_triples = False, plot_fourths = False, plot_more_than_four = False, initial_crystal_orientation = None):
 
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle)
 
@@ -105,9 +105,9 @@ def mapping(phase, detector, sample_detector_distance, tilting_angle, wavelength
     list_hkls = []
 
     if phase == "Monoclinic":
-        lattice_structure = utils.Monoclinic_Lattice()    
+        lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)    
     elif phase == "Hexagonal":
-        lattice_structure = utils.Hexagonal_Lattice()
+        lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation)
 
     for rotx in rots_x:
         for rotz in rots_z:
@@ -224,7 +224,7 @@ def mapping(phase, detector, sample_detector_distance, tilting_angle, wavelength
         else:
             pass
     
-def tracking_specific_reflections(phase, detector, sample_detector_distance, tilting_angle, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, desired_reflections_list, unrot_axis_value = 0 ,margin = 0, savefig = False, fig_name = None):
+def tracking_specific_reflections(phase, detector, sample_detector_distance, tilting_angle, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, desired_reflections_list, unrot_axis_value = 0 ,margin = 0, savefig = False, fig_name = None, initial_crystal_orientation = None):
 
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle)
 
@@ -236,9 +236,9 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, til
     list_hkl = []
 
     if phase == "Monoclinic":
-        lattice_structure = utils.Monoclinic_Lattice()        
+        lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)        
     elif phase == "Hexagonal":
-        lattice_structure = utils.Hexagonal_Lattice()
+        lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation)
 
 
     for rotx in rots_x:
@@ -315,12 +315,12 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, til
             pass
 
 
-def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, tilting_angle, wavelength, E_bandwidth, smallest_number, largest_number, calculate_intensities = False, margin = 0):
+def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, tilting_angle, wavelength, E_bandwidth, smallest_number, largest_number, calculate_intensities = False, margin = 0, initial_crystal_orientation = None):
 
     if phase == "Monoclinic":
-        lattice_structure = utils.Monoclinic_Lattice()
+        lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
     elif phase == "Hexagonal":
-        lattice_structure = utils.Hexagonal_Lattice()
+        lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation)
 
     if calculate_intensities == True:
         vanadium_atom = utils.Vanadium()

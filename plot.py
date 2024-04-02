@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objs as go
 import matplotlib.pyplot as plt
-import XRD_Single_Crystal.utils as utils
+import XRD_Single_Crystal_JG.utils as utils
 
 
 def Colorize(vector, vmin=None, vmax=None, ax=None, cmap=plt.cm.jet):
@@ -121,7 +121,7 @@ def plot_detector(data, colorize = False):
     b_x, b_y, b_z = np.round(data["crystal"]["lattice_params"][1], 3)
     c_x, c_y, c_z = np.round(data["crystal"]["lattice_params"][2], 3)
 
-    plt.title("Detector = %s, Phase = %s, $\\phi$ = %s°\na = (%s x, %s y, %s z)\nb = (%s x, %s y, %s z)\nc = (%s x, %s y, %s z)\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(data["detector"].detector_type, data["crystal"]["phase"], data["detector"].tilting_angle, a_x, a_y, a_z, b_x, b_y, b_z, c_x, c_y, c_z, data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
+    plt.title("Detector = %s, Phase = %s, $\\phi$ = %s°\na = (%s x, %s y, %s z)\nb = (%s x, %s y, %s z)\nc = (%s x, %s y, %s z)\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(data["detector"].detector_type, data["crystal"]["phase"], np.round(np.rad2deg(data["detector"].tilting_angle),1), a_x, a_y, a_z, b_x, b_y, b_z, c_x, c_y, c_z, data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
     
     [plt.scatter(y_val, z_val, label=label) for y_val, z_val, label in zip(data["y_coordinate"], data["z_coordinate"], data["hkls"])]
 

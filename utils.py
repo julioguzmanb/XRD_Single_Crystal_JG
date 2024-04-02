@@ -306,31 +306,34 @@ class Lattice_Structure:
         #self.crystal_orientation = apply_rotation(self.crystal_orientation, rotx, roty, rotz)
     
 class Hexagonal_Lattice(Lattice_Structure):
-    def __init__(self):
-        initial_crystal_orientation = np.array([
-        [a_H     , 0               , 0  ],
-        [-0.5*b_H, np.sqrt(3)*b_H/2, 0  ],
-        [0       , 0               , c_H]
-        ])
+    def __init__(self, initial_crystal_orientation = None):
+        if initial_crystal_orientation is None:
+            initial_crystal_orientation = np.array([
+            [a_H     , 0               , 0  ],
+            [-0.5*b_H, np.sqrt(3)*b_H/2, 0  ],
+            [0       , 0               , c_H]
+            ])
 
         Vanadium_fractional_position = np.array([0.00000,    0.00000,    0.34670])
         Oxygen_fractional_position   = np.array([0.31480,    0.00000,    0.25000])
 
         super().__init__(initial_crystal_orientation, Vanadium_fractional_position, Oxygen_fractional_position)
+        
 
 class Monoclinic_Lattice(Lattice_Structure):
-    def __init__(self):
-        initial_crystal_orientation = np.array([
-        [b_M/2 - np.sqrt((c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4)/3), 
-         b_M/np.sqrt(12) - np.sqrt(c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4),  
-         np.sqrt((14*c_M**2 - 4*a_M**2 + a_M*c_M*np.cos(np.radians(beta_M)))/9)],
+    def __init__(self, initial_crystal_orientation = None):
+        if initial_crystal_orientation is None:
+            initial_crystal_orientation = np.array([
+            [b_M/2 - np.sqrt((c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4)/3), 
+            b_M/np.sqrt(12) - np.sqrt(c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4),  
+            np.sqrt((14*c_M**2 - 4*a_M**2 + a_M*c_M*np.cos(np.radians(beta_M)))/9)],
 
-        [b_M,0,0],
+            [b_M,0,0],
 
-        [b_M/4 - np.sqrt((c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4)/12),
-         b_M/np.sqrt(48) - 0.5*np.sqrt(c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4), 
-         -np.sqrt((14*c_M**2 - 4*a_M**2 + a_M*c_M*np.cos(np.radians(beta_M)))/9)]
-        ])
+            [b_M/4 - np.sqrt((c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4)/12),
+            b_M/np.sqrt(48) - 0.5*np.sqrt(c_M**2 + a_M*c_M*np.cos(np.radians(beta_M)) - (b_M**2)/4), 
+            -np.sqrt((14*c_M**2 - 4*a_M**2 + a_M*c_M*np.cos(np.radians(beta_M)))/9)]
+            ])
 
         Vanadium_fractional_position = np.array([0.34460,    0.00500,    0.29850])
         Oxygen_fractional_position   = np.array([[0.41100,    0.84700,    0.65000], [0.25000,    0.18000,    0.00000]])
@@ -362,10 +365,10 @@ class Detector:
             self.sample_detector_distance = sample_detector_distance
         
         if tilting_angle is not None:
-            self.tilting_angle = tilting_angle
+            self.tilting_angle = np.radians(tilting_angle)
         
     def Max_Detectable_Z(self):
-        self.tilting_angle = np.radians(self.tilting_angle)
+        #self.tilting_angle = self.tilting_angle
         max_theta_z = np.arctan(np.cos(self.tilting_angle)/((self.sample_detector_distance/self.height) - np.sin(self.tilting_angle)))
 
         dz = self.sample_detector_distance*np.tan(max_theta_z)/(np.cos(self.tilting_angle) + np.tan(max_theta_z)*np.sin(self.tilting_angle))
