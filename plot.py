@@ -136,3 +136,5 @@ def plot_detector(data, colorize = False):
     plt.tight_layout()
     plt.grid()
     plt.show()
+
+

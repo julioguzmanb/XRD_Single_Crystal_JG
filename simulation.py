@@ -5,6 +5,7 @@ import XRD_Single_Crystal_JG.utils as utils
 import XRD_Single_Crystal_JG.plot as plot
 plt.ion()
 
+
 def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None):
 
     #Creating lattice structure

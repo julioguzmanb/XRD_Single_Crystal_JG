@@ -500,8 +500,3 @@ class Oxygen(Atom):
         ])
         super().__init__(symbol, atomic_structure_factor)
 
-
-
-#hkls = [[1,1,0], [-1,-1,0], [-2,-1,4], [2,1,4]]
-#for hkl in hkls:
-#    XRD.simulation.tracking_specific_reflections(phase = "Hexagonal", detector = "Rigaku", sample_detector_distance = 60.87, tilting_angle = 0,wavelength = 0.7107, rot_x_start = -180, rot_x_end = 180, step_rot_x = 3, rot_z_start = -180, rot_z_end = 180, step_rot_z=3, E_bandwidth = 5, desired_reflections_list = [hkl], margin = 0)
