@@ -50,8 +50,8 @@ def apply_rotation(initial_matrix, rotx = 0, roty = 0, rotz = 0):
 
 #"""
 def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0):
-    rotation_quaternion_x = R.from_euler('x', rotx, degrees=True).as_quat()
-    rotation_quaternion_y = R.from_euler('y', roty, degrees=True).as_quat()
+    rotation_quaternion_x = R.from_euler('x', -rotx, degrees=True).as_quat()
+    rotation_quaternion_y = R.from_euler('y', -roty, degrees=True).as_quat()
     rotation_quaternion_z = R.from_euler('z', -rotz, degrees=True).as_quat()
 
     total_rotation_quaternion = R.from_quat(rotation_quaternion_x) * R.from_quat(rotation_quaternion_y) * R.from_quat(rotation_quaternion_z)
