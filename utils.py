@@ -393,13 +393,16 @@ def single_crystal_orientation(phase, wavelength, sample_detector_distance, rota
 
     sol = least_squares(residuals, crystal_orient_guess, bounds=bounds)
 
-    Initial_crystal_orientation = np.array([
+    solution = np.array([
         [sol.x[0], sol.x[1], sol.x[2]],
         [sol.x[3], sol.x[4], sol.x[5]],
         [sol.x[6], sol.x[7], sol.x[8]]
     ])
 
-    return np.round(Initial_crystal_orientation, 2)
+    #current_crystal_orientation = apply_rotation(solution, rotx = rotations_peak_3[0], roty = rotations_peak_3[1], rotz = rotations_peak_3[2], rotation_order = "xyz")
+
+    
+    return np.round(solution, 3)
 
 
 class Lattice_Structure:
