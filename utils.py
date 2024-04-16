@@ -38,12 +38,28 @@ def apply_rotation(initial_matrix, rotx = 0, roty = 0, rotz = 0):
 """
 
 
-def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0):
+def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0, rotation_order = "xyz"):
     rotation_quaternion_x = R.from_euler('x', -rotx, degrees=True).as_quat()
     rotation_quaternion_y = R.from_euler('y', -roty, degrees=True).as_quat()
     rotation_quaternion_z = R.from_euler('z', -rotz, degrees=True).as_quat()
 
-    total_rotation_quaternion = R.from_quat(rotation_quaternion_x) * R.from_quat(rotation_quaternion_y) * R.from_quat(rotation_quaternion_z)
+    if rotation_order == "xyz":
+        total_rotation_quaternion = R.from_quat(rotation_quaternion_x) * R.from_quat(rotation_quaternion_y) * R.from_quat(rotation_quaternion_z)
+
+    elif rotation_order == "xzy":
+        total_rotation_quaternion = R.from_quat(rotation_quaternion_x) * R.from_quat(rotation_quaternion_z) * R.from_quat(rotation_quaternion_y)
+    
+    elif rotation_order == "yxz":
+        total_rotation_quaternion = R.from_quat(rotation_quaternion_y) * R.from_quat(rotation_quaternion_x) * R.from_quat(rotation_quaternion_z)
+
+    elif rotation_order == "yzx":
+        total_rotation_quaternion = R.from_quat(rotation_quaternion_y) * R.from_quat(rotation_quaternion_z) * R.from_quat(rotation_quaternion_x)
+    
+    elif rotation_order == "zxy":
+        total_rotation_quaternion = R.from_quat(rotation_quaternion_z) * R.from_quat(rotation_quaternion_x) * R.from_quat(rotation_quaternion_y)
+    
+    elif rotation_order == "zyx":
+        total_rotation_quaternion = R.from_quat(rotation_quaternion_z) * R.from_quat(rotation_quaternion_y) * R.from_quat(rotation_quaternion_x)
 
     total_rotation_matrix = total_rotation_quaternion.as_matrix()
 
@@ -312,7 +328,7 @@ def construct_kf_exp(wavelength, y_distance_from_center, z_distance_from_center,
 
     return np.array([kfx, kfy, kfz])
 
-def single_crystal_orientation(phase, wavelength, sample_detector_distance, rotations_peak_1, y_distance_from_center_peak_1, z_distance_from_center_peak_1, hkl_peak_1, rotations_peak_2, y_distance_from_center_peak_2, z_distance_from_center_peak_2, hkl_peak_2, rotations_peak_3, y_distance_from_center_peak_3, z_distance_from_center_peak_3, hkl_peak_3, crystal_orient_guess, tilting_angle = 0):
+def single_crystal_orientation(phase, wavelength, sample_detector_distance, rotations_peak_1, y_distance_from_center_peak_1, z_distance_from_center_peak_1, hkl_peak_1, rotations_peak_2, y_distance_from_center_peak_2, z_distance_from_center_peak_2, hkl_peak_2, rotations_peak_3, y_distance_from_center_peak_3, z_distance_from_center_peak_3, hkl_peak_3, crystal_orient_guess, tilting_angle = 0, rotation_order = "xyz"):
     """
     This long function is to be used when trying to retreive single crystal orientation given 3 Braggs.
     """
@@ -346,9 +362,9 @@ def single_crystal_orientation(phase, wavelength, sample_detector_distance, rota
             [G, H, I],
         ])
             
-        Cryst_Orient_1 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_1[0], roty = rotations_peak_1[1], rotz = rotations_peak_1[2])
-        Cryst_Orient_2 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_2[0], roty = rotations_peak_2[1], rotz = rotations_peak_2[2])
-        Cryst_Orient_3 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_3[0], roty = rotations_peak_3[1], rotz = rotations_peak_3[2])
+        Cryst_Orient_1 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_1[0], roty = rotations_peak_1[1], rotz = rotations_peak_1[2], rotation_order=rotation_order)
+        Cryst_Orient_2 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_2[0], roty = rotations_peak_2[1], rotz = rotations_peak_2[2], rotation_order=rotation_order)
+        Cryst_Orient_3 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_3[0], roty = rotations_peak_3[1], rotz = rotations_peak_3[2], rotation_order=rotation_order)
         #Cryst_Orient_4 = XRD.utils.apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_4[0], roty = rotations_peak_4[1], rotz = rotations_peak_4[2])
 
         a_rec_peak_1, b_rec_peak_1, c_rec_peak_1 = cal_reciprocal_lattice(Cryst_Orient_1[0], Cryst_Orient_1[1], Cryst_Orient_1[2])
@@ -399,8 +415,8 @@ class Lattice_Structure:
         self.Oxygen_fractional_position = Oxygen_fractional_position
         self.crystal_orientation = initial_crystal_orientation
     
-    def Apply_Rotation(self, rotx = 0, roty = 0, rotz = 0):
-        self.crystal_orientation = apply_rotation(self.initial_crystal_orientation, rotx, roty, rotz)
+    def Apply_Rotation(self, rotx = 0, roty = 0, rotz = 0, rotation_order = "xyz"):
+        self.crystal_orientation = apply_rotation(self.initial_crystal_orientation, rotx, roty, rotz, rotation_order=rotation_order)
         #self.crystal_orientation = apply_rotation(self.crystal_orientation, rotx, roty, rotz)
     
 class Hexagonal_Lattice(Lattice_Structure):
