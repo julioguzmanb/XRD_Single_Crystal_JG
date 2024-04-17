@@ -5,7 +5,7 @@ import XRD_Single_Crystal_JG.utils as utils
 import XRD_Single_Crystal_JG.plot as plot
 plt.ion()
 
-def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None):
+def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None, rotation_order = "xyz"):
 
     #Creating lattice structure
     if phase == "Monoclinic":
@@ -15,7 +15,7 @@ def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_
         lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation) 
 
     #Rotating the crystal
-    lattice_structure.Apply_Rotation(rotx, roty, rotz)
+    lattice_structure.Apply_Rotation(rotx, roty, rotz, rotation_order = rotation_order)
 
     #Calculating the reciprocal lattice vectors
     a,b,c = lattice_structure.crystal_orientation
@@ -28,7 +28,7 @@ def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_
 
     plot.plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth)
 
-def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, initial_crystal_orientation = None, margin = 0, beam_center = (0,0)):
+def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz"):
 
 
     #Creating detector instance
@@ -42,7 +42,7 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation)
 
     #Rotating the crystal
-    lattice_structure.Apply_Rotation(rotx, roty, rotz)
+    lattice_structure.Apply_Rotation(rotx, roty, rotz, rotation_order = rotation_order)
 
     #Calculating the reciprocal lattice vectors
     a,b,c = lattice_structure.crystal_orientation
@@ -93,7 +93,7 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
     elif counter >=2:
         plot.plot_detector(data, colorize = True)
 
-def mapping(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, smallest_number = -6, largest_number = 6, tilting_angle = 0, plot_singles = False, plot_doubles = False, plot_triples = False, plot_fourths = False, plot_more_than_four = False, initial_crystal_orientation = None, margin = 0, beam_center = (0,0)):
+def mapping(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, smallest_number = -6, largest_number = 6, tilting_angle = 0, plot_singles = False, plot_doubles = False, plot_triples = False, plot_fourths = False, plot_more_than_four = False, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz"):
 
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center)
 
@@ -115,7 +115,7 @@ def mapping(phase, detector, sample_detector_distance, wavelength, rot_x_start, 
     for rotx in rots_x:
         for rotz in rots_z:
             
-            lattice_structure.Apply_Rotation(rotx, rotz)
+            lattice_structure.Apply_Rotation(rotx, rotz, rotation_order = rotation_order)
 
             a,b,c = lattice_structure.crystal_orientation
             a_rec, b_rec, c_rec = utils.cal_reciprocal_lattice(a, b, c)
@@ -227,7 +227,7 @@ def mapping(phase, detector, sample_detector_distance, wavelength, rot_x_start, 
         else:
             pass
     
-def tracking_specific_reflections(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, desired_reflections_list, tilting_angle = 0, unrot_axis_value = 0, margin = 0, beam_center = (0,0), savefig = False, fig_name = None, initial_crystal_orientation = None):
+def tracking_specific_reflections(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, desired_reflections_list, tilting_angle = 0, unrot_axis_value = 0, margin = 0, beam_center = (0,0), savefig = False, fig_name = None, initial_crystal_orientation = None, rotation_order = "xyz"):
 
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center)
 
@@ -248,7 +248,7 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
         for rotz in rots_z:
             roty = unrot_axis_value
 
-            lattice_structure.Apply_Rotation(rotx, roty, rotz)
+            lattice_structure.Apply_Rotation(rotx, roty, rotz, rotation_order = rotation_order)
 
             a,b,c = lattice_structure.crystal_orientation
 
@@ -318,7 +318,7 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
             pass
 
 
-def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, calculate_intensities = False, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0)):
+def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, calculate_intensities = False, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz"):
 
     if phase == "Monoclinic":
         lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
@@ -359,7 +359,7 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
         for roty in rots[:1]:
             for rotz in rots:
 
-                lattice_structure.Apply_Rotation(rotx, roty, rotz)
+                lattice_structure.Apply_Rotation(rotx, roty, rotz, rotation_order = rotation_order)
 
                 a,b,c = lattice_structure.crystal_orientation
                 a_rec, b_rec, c_rec = utils.cal_reciprocal_lattice(a, b, c)
