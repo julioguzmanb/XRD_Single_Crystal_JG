@@ -111,7 +111,7 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
 
     fig.show()
 
-def plot_detector(data, colorize = False):
+def plot_detector(data, beam_center = (0,0), colorize = False):
     data["detector"]
     fig_size = (8*(data["detector"].height/170)*data["detector"].width/data["detector"].height + 0.3, 8*(data["detector"].height/170))
     plt.figure(figsize = (fig_size[0], fig_size[1]))
@@ -123,12 +123,16 @@ def plot_detector(data, colorize = False):
 
     plt.title("Detector = %s, Phase = %s, $\\phi$ = %s°\na = (%s x, %s y, %s z)\nb = (%s x, %s y, %s z)\nc = (%s x, %s y, %s z)\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(data["detector"].detector_type, data["crystal"]["phase"], np.round(np.rad2deg(data["detector"].tilting_angle),1), a_x, a_y, a_z, b_x, b_y, b_z, c_x, c_y, c_z, data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
     
-    [plt.scatter(y_val, z_val, label=label) for y_val, z_val, label in zip(data["y_coordinate"], data["z_coordinate"], data["hkls"])]
-
     if colorize == True:
+        [plt.scatter(y_val, z_val, label=label) for y_val, z_val, label in zip(data["y_coordinate"], data["z_coordinate"], data["hkls"])]
         Colorize(vector = list(range(len(data["hkls"]))), cmap = plt.cm.jet)
+
+    else:
+        [plt.scatter(y_val, z_val, label=label, color = "blue") for y_val, z_val, label in zip(data["y_coordinate"], data["z_coordinate"], data["hkls"])]
     
+    plt.scatter(beam_center[0], beam_center[1], label = "Beam Center",marker='x', color='black', s = 100)
     plt.legend(title = "(h,k,l)", loc = "upper right", fontsize = 14, framealpha = 1)
+
     plt.xlim(-0.5*data["detector"].width, 0.5*data["detector"].width)
     plt.xlabel("Detector Width [mm]",fontsize = 16)
     plt.ylim(0, data["detector"].height)
