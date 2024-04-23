@@ -88,10 +88,10 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         print("No (hkl) reflections seen in the detector!!")
     
     elif counter == 1:
-        plot.plot_detector(data)
+        plot.plot_detector(data, beam_center = beam_center)
     
     elif counter >=2:
-        plot.plot_detector(data, colorize = True)
+        plot.plot_detector(data, beam_center = beam_center, colorize = True)
 
 def mapping(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, smallest_number = -6, largest_number = 6, tilting_angle = 0, plot_singles = False, plot_doubles = False, plot_triples = False, plot_fourths = False, plot_more_than_four = False, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz"):
 
@@ -400,6 +400,8 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
 
     else:
         plt.scatter(dys, dzs, color = "blue", s = 8) 
+    
+    plt.scatter(beam_center[0], beam_center[1], label = "Beam Center", marker='x', color='black', s = 100)
 
     plt.tight_layout()
     plt.show()
