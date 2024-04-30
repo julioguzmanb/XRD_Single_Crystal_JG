@@ -222,19 +222,19 @@ def diffraction_direction(Q_hkl, wavelength, sample_detector_distance, tilting_a
         dx = 1
     
     try:
-        dy = np.sign(kf[1]) * sample_detector_distance * np.tan(np.arccos(np.dot(kfxy, ki) / (np.linalg.norm(kfxy) * np.linalg.norm(ki))))
-        
-    except ZeroDivisionError:
-        pass
-    
-    try:
         denominator = np.dot(kfxz, ki) / (np.linalg.norm(kfxz) * np.linalg.norm(ki))
         if abs(denominator) < 1:
             numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator))
             dz = np.sign(kf[2]) * sample_detector_distance / (numerator + np.sin(tilting_angle))
+
+            try:
+                dy = np.sign(kf[1])*(sample_detector_distance - dz*np.sin(tilting_angle))*np.tan(np.arccos(np.dot(kfxy, ki) / (np.linalg.norm(kfxy) * np.linalg.norm(ki))))
+            except ZeroDivisionError:
+                pass
             
     except ZeroDivisionError:
         pass
+    
     
     return dx, dy, dz
 
