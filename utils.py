@@ -156,51 +156,6 @@ def diffraction_in_detector(dx, dy, dz, detector):
 
     else:
         return False
-
-"""
-def diffraction_direction(Q_hkls, wavelength, sample_detector_distance, tilting_angle, detector):
-    tilting_angle = np.radians(tilting_angle)
-    ki = np.array([2*np.pi/wavelength, 0, 0])
-    kf = Q_hkls + ki[:, np.newaxis]  # Add ki to each Q_hkl
-    
-    dx, dy, dz = np.zeros_like(Q_hkls), np.zeros_like(Q_hkls), np.zeros_like(Q_hkls)
-
-    kfxy = kf.copy()
-    kfxy[:, 2] = 0  # Set the third component to zero for all rows
-
-    kfxz = kf.copy()
-    kfxz[:, 1] = 0  # Set the second component to zero for all rows
-
-    # Calculate dx
-    dx[kf[:, 0] > 0] = 1
-
-    try:
-        denominator = np.dot(kfxz, ki) / (np.linalg.norm(kfxz, axis=1) * np.linalg.norm(ki))
-        mask = np.abs(denominator) < 1
-        numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator[mask]))
-        dz[mask] = np.sign(kf[mask, 2]) * sample_detector_distance / (numerator + np.sin(tilting_angle))
-
-    except ZeroDivisionError:
-        pass
-
-    try:
-        mask = np.abs(np.dot(kfxy, ki) / (np.linalg.norm(kfxy, axis=1) * np.linalg.norm(ki))) < 1
-        dy[mask] = np.sign(kf[mask, 1]) * (sample_detector_distance - dz[mask] * np.sin(tilting_angle)) * np.tan(
-            np.arccos(np.dot(kfxy[mask], ki) / (np.linalg.norm(kfxy[mask], axis=1) * np.linalg.norm(ki))))
-    except ZeroDivisionError:
-        pass
-
-    # Use diffraction_in_detector function with arrays and create a mask
-    detection_mask = diffraction_in_detector(dx, dy, dz, detector)
-
-    # Apply the mask to dx, dy, and dz
-    dx = dx[detection_mask]
-    dy = dy[detection_mask]
-    dz = dz[detection_mask]
-
-    return dx, dy, dz
-"""
-
     
 
 def calculate_two_theta_angle(phase, hkl, wavelength):
