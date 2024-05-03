@@ -98,65 +98,65 @@ def calculate_Q_hkl(hkl, reciprocal_lattice):
 
     return Q_hkl
 
-def check_Bragg_condition(Q_hkl, wavelength, E_bandwidth):
+
+def check_Bragg_condition(Q_hkls, wavelength, E_bandwidth):
 
     ewald_sphere = Ewald_Sphere(wavelength, E_bandwidth)
 
-    ki = np.array([2*np.pi/wavelength,0,0])
+    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
+    kf = Q_hkls + ki  # Add ki to each Q_hkl
 
-    kf = Q_hkl + ki
-    kf_hkl_module = np.linalg.norm(kf)
+    kf_hkl_module = np.linalg.norm(kf,axis = 1)
 
-    if (kf_hkl_module >= ewald_sphere.Get_Inner_Radius()) and (kf_hkl_module <= ewald_sphere.Get_Outer_Radius()):
-        Bragg_Condition = True
-    else:
-        Bragg_Condition = False
-            
-    return Bragg_Condition
+    in_bragg_condition = (kf_hkl_module >= ewald_sphere.Get_Inner_Radius()) & (kf_hkl_module <= ewald_sphere.Get_Outer_Radius())
+        
+ 
+    return in_bragg_condition
 
-def diffraction_direction(Q_hkl, wavelength, sample_detector_distance, tilting_angle):
+
+
+def diffraction_direction(Q_hkls, wavelength, sample_detector_distance, tilting_angle):
     tilting_angle = np.radians(tilting_angle)
-    ki = np.array([2*np.pi/wavelength, 0, 0])
-    kf = Q_hkl + ki
+
+    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
+    kf_hkls = Q_hkls + ki 
     
-    dx, dy, dz = 0, 0, 0
-    
-    kfxy = kf.copy()
-    kfxy[2] = 0
-    
-    kfxz = kf.copy()
-    kfxz[1] = 0
-    
-    if kf[0] > 0:
-        dx = 1
-    
+    dx, dy, dz = np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls))
+
+    kfxy = kf_hkls.copy()
+    kfxy[:, 2] = 0  # Set the third component to zero for all rows
+
+    kfxz = kf_hkls.copy()
+    kfxz[:, 1] = 0  # Set the second component to zero for all rows
+
+    # Calculate dx
+    dx[kf_hkls[:, 0] > 0] = 1
+
     try:
-        denominator = np.dot(kfxz, ki) / (np.linalg.norm(kfxz) * np.linalg.norm(ki))
-        if abs(denominator) < 1:
-            numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator))
-            dz = np.sign(kf[2]) * sample_detector_distance / (numerator + np.sin(tilting_angle))
+        denominator = kfxz[:,0]/np.linalg.norm(kfxz, axis=1)
+        mask = np.abs(denominator) < 1
+        numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator[mask]))
+        dz[mask] = np.sign(kf_hkls[mask, 2]) * sample_detector_distance / (numerator + np.sin(tilting_angle))
 
     except ZeroDivisionError:
         pass
-    
+
     try:
-        dy = np.sign(kf[1])*(sample_detector_distance - dz*np.sin(tilting_angle))*np.tan(np.arccos(np.dot(kfxy, ki) / (np.linalg.norm(kfxy) * np.linalg.norm(ki))))
+        mask = np.abs(kfxz[:,0]/(np.linalg.norm(kfxy, axis=1))) < 1
+        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask] * np.sin(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask] / (np.linalg.norm(kfxy[mask], axis=1))))
     except ZeroDivisionError:
         pass
 
-    return dx, dy, dz
+    diffracted_information = np.stack((dx, dy, dz), axis=1)
 
-def diffraction_in_detector(dx, dy, dz, detector):
+    return diffracted_information
+
+def diffraction_in_detector(diffracted_information, detector):
     #Detector must be an object
-    if dx > 0:
-        if (dz <= detector.Max_Detectable_Z() and dz >= detector.Min_Detectable_Z()) and (dy <= detector.Max_Detectable_Y() and dy >= detector.Min_Detectable_Y()):
-            return True
-        else:
-            return False
+    mask = (diffracted_information[:,0] > 0) & (diffracted_information[:,1] <= detector.Max_Detectable_Y()) & (diffracted_information[:,1] >= detector.Min_Detectable_Y()) & (diffracted_information[:,2] <= detector.Max_Detectable_Z()) & (diffracted_information[:,2] >= detector.Min_Detectable_Z())
 
-    else:
-        return False
-    
+    return mask
+
 
 def calculate_two_theta_angle(phase, hkl, wavelength):
 
