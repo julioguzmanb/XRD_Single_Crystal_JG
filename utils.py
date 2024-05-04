@@ -207,75 +207,55 @@ def calculate_angle_between_two_reflections(phase, hkl_1, hkl_2):
 
     return angle
 
-def construct_kf_exp(wavelength, y_distance_from_center, z_distance_from_center, sample_detector_distance, tilting_angle = 0):
-
-    """This function is dedicated to single crystal orientation from exp data"""
-
-    tilting_angle = np.deg2rad(tilting_angle)
-
-    ki = 2*np.pi/wavelength
-
-    kfy = (ki**2)*(1 - (1/(1/((sample_detector_distance/(z_distance_from_center*np.cos(tilting_angle)) - np.tan(tilting_angle))**2 + 1) + (np.cos(np.arctan(np.cos(tilting_angle)/(sample_detector_distance/z_distance_from_center - np.sin(tilting_angle)))
-)/np.cos(np.arctan(y_distance_from_center/(sample_detector_distance - z_distance_from_center*np.sin(tilting_angle)))))**2)))
-
-    kfz = (ki**2 - kfy**2)/((sample_detector_distance/(z_distance_from_center*np.cos(tilting_angle)) - np.tan(tilting_angle))**2 + 1)
-
-    kfx = ki**2 - (kfy**2 + kfz**2)
-    
-    return np.array([kfx, kfy, kfz])
-#"""
-def single_crystal_orientation(phase, wavelength, sample_detector_distance, 
-                               rotations_peak_1, y_distance_from_center_peak_1, z_distance_from_center_peak_1, hkl_peak_1, 
-                               rotations_peak_2, y_distance_from_center_peak_2, z_distance_from_center_peak_2, hkl_peak_2, 
-                               rotations_peak_3, y_distance_from_center_peak_3, z_distance_from_center_peak_3, hkl_peak_3, 
+def single_crystal_orientation(phase, wavelength, sample_detector_distance, beam_center,
+                               hkls, rotations, y_coordinates, z_coordinates,
                                crystal_orient_guess, tilting_angle = 0, rotation_order = "xyz"):
 
     #This long function is to be used when trying to retreive single crystal orientation given 3 Braggs.
+    y_distances = np.array(y_coordinates) - beam_center[0]
+    z_distances = np.array(z_coordinates) - beam_center[1]
 
+    def construct_kf_exp(wavelength, y_distance_from_center, z_distance_from_center, sample_detector_distance, tilting_angle = 0):
+
+        tilting_angle = np.deg2rad(tilting_angle)
+        ki = 2*np.pi/wavelength
+        kfy = (ki**2)*(1 - (1/(1/((sample_detector_distance/(z_distance_from_center*np.cos(tilting_angle)) - np.tan(tilting_angle))**2 + 1) + (np.cos(np.arctan(np.cos(tilting_angle)/(sample_detector_distance/z_distance_from_center - np.sin(tilting_angle))))/np.cos(np.arctan(y_distance_from_center/(sample_detector_distance - z_distance_from_center*np.sin(tilting_angle)))))**2)))
+        kfz = (ki**2 - kfy**2)/((sample_detector_distance/(z_distance_from_center*np.cos(tilting_angle)) - np.tan(tilting_angle))**2 + 1)
+        kfx = ki**2 - (kfy**2 + kfz**2)
+        return np.array([kfx, kfy, kfz])
+    
     if phase == "Hexagonal":
         lattice = Hexagonal_Lattice()
-        bounds = ([-lattice.c] * 9, [lattice.c] * 9)
+        #bounds = ([-lattice.c] * 9, [lattice.c] * 9)
     
     elif phase == "Monoclinic":
         lattice = Monoclinic_Lattice()
-        bounds = ([-lattice.a] * 9, [lattice.a] * 9)
+        #bounds = ([-lattice.a] * 9, [lattice.a] * 9)
 
-    a = lattice.a
-    b = lattice.b
-    c = lattice.c
-    alpha = lattice.alpha
-    beta = lattice.beta
-    gamma = lattice.gamma
+    a, b, c, alpha, beta, gamma = lattice.a, lattice.b, lattice.c, lattice.alpha, lattice.beta, lattice.gamma
 
-    kf1 = construct_kf_exp(wavelength, y_distance_from_center_peak_1, z_distance_from_center_peak_1, sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle)
-    kf2 = construct_kf_exp(wavelength, y_distance_from_center_peak_2, z_distance_from_center_peak_2, sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle)
-    kf3 = construct_kf_exp(wavelength, y_distance_from_center_peak_3, z_distance_from_center_peak_3, sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle)
-    #kf4 = Construct_kf_exp(wavelength = wavelength, y_distance_from_center = y_distance_from_center_peak_4, z_distance_from_center = z_distance_from_center_peak_4, sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle)
-
-    ki = 2*np.pi/wavelength #np.array([2*np.pi/wavelength, 0, 0])**2
+    ki = 2*np.pi/wavelength 
 
     def residuals(params):
         A, B, C, D, E, F, G, H, I = params
-        Cryst_Orient = np.array([
-            [A, B, C],
-            [D, E, F],
-            [G, H, I],
-        ])
-            
-        Cryst_Orient_1 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_1[0], roty = rotations_peak_1[1], rotz = rotations_peak_1[2], rotation_order=rotation_order)
-        Cryst_Orient_2 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_2[0], roty = rotations_peak_2[1], rotz = rotations_peak_2[2], rotation_order=rotation_order)
-        Cryst_Orient_3 = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_3[0], roty = rotations_peak_3[1], rotz = rotations_peak_3[2], rotation_order=rotation_order)
-        #Cryst_Orient_4 = XRD.utils.apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations_peak_4[0], roty = rotations_peak_4[1], rotz = rotations_peak_4[2])
+        Cryst_Orient = np.array([[A, B, C], [D, E, F], [G, H, I]])
+        
+        ress = []
 
-        reciprocal_lattice_1 = cal_reciprocal_lattice(Cryst_Orient_1)
-        reciprocal_lattice_2 = cal_reciprocal_lattice(Cryst_Orient_2)
-        reciprocal_lattice_3 = cal_reciprocal_lattice(Cryst_Orient_3)
-        #a_rec_peak_4, b_rec_peak_4, c_rec_peak_4 = XRD.utils.cal_reciprocal_lattice(Cryst_Orient_4[0], Cryst_Orient_4[1], Cryst_Orient_4[2])
+        for i in range(len(hkls)):
+            kf = construct_kf_exp(wavelength, y_distances[i], z_distances[i], sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle)
 
-        GG_peak_1 = calculate_Q_hkl(hkl_peak_1, reciprocal_lattice_1)
-        GG_peak_2 = calculate_Q_hkl(hkl_peak_2, reciprocal_lattice_2)
-        GG_peak_3 = calculate_Q_hkl(hkl_peak_3, reciprocal_lattice_3)
-        #GG_peak_4 = XRD.utils.calculate_Q_hkl(hkl_peak_4, a_rec_peak_4, b_rec_peak_4, c_rec_peak_4)
+            Cryst_Orientation = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations[i][0], roty = rotations[i][1], rotz = rotations[i][2], rotation_order=rotation_order)
+            reciprocal_lattice = cal_reciprocal_lattice(Cryst_Orientation)
+            GG_peak = calculate_Q_hkl(hkls[i], reciprocal_lattice)
+
+            res_1 = (GG_peak[0] + ki)**2 - kf[0]
+            res_2 =  GG_peak[1]**2       - kf[1]
+            res_3 =  GG_peak[2]**2       - kf[2]
+
+            ress.append(res_1)
+            ress.append(res_2)
+            ress.append(res_3)
 
         # Constraints
         constraint1 = A**2 + B**2 + C**2 - a**2
@@ -284,39 +264,16 @@ def single_crystal_orientation(phase, wavelength, sample_detector_distance,
         constraint4 =  np.dot(Cryst_Orient[0],  Cryst_Orient[1])   - a*b*np.cos(np.deg2rad(gamma))
         constraint5 =  np.dot(Cryst_Orient[1],  Cryst_Orient[2])   - b*c*np.cos(np.deg2rad(alpha))
         constraint6 =  np.dot(Cryst_Orient[2],  Cryst_Orient[0])   - c*a*np.cos(np.deg2rad(beta ))
-        constraint7 = np.dot(Cryst_Orient_1[0], Cryst_Orient_1[1]) - a*b*np.cos(np.deg2rad(gamma))
-        constraint8 = np.dot(Cryst_Orient_1[1], Cryst_Orient_1[2]) - b*c*np.cos(np.deg2rad(alpha))
-        constraint9 = np.dot(Cryst_Orient_1[2], Cryst_Orient_1[0]) - c*a*np.cos(np.deg2rad(beta ))
-        #constraint10 = np.dot(Cryst_Orient_2[0], Cryst_Orient_2[1]) - a*b*np.cos(np.deg2rad(gamma))
-        #constraint11 = np.dot(Cryst_Orient_2[1], Cryst_Orient_2[2]) - b*c*np.cos(np.deg2rad(alpha))
-        #constraint12 = np.dot(Cryst_Orient_2[2], Cryst_Orient_2[0]) - c*a*np.cos(np.deg2rad(beta ))
-        #constraint13 = np.dot(Cryst_Orient_3[0], Cryst_Orient_3[1]) - a*b*np.cos(np.deg2rad(gamma))
-        #constraint14 = np.dot(Cryst_Orient_3[1], Cryst_Orient_3[2]) - b*c*np.cos(np.deg2rad(alpha))
-        #constraint15 = np.dot(Cryst_Orient_3[2], Cryst_Orient_3[0]) - c*a*np.cos(np.deg2rad(beta ))
-        
 
-        res_1 = (GG_peak_1[0] + ki)**2 - kf1[0]
-        res_2 =  GG_peak_1[1]**2 - kf1[1]
-        res_3 =  GG_peak_1[2]**2 - kf1[2]
-        res1 = [res_1,res_2,res_3]
+        return  np.concatenate((ress, [constraint1, constraint2, constraint3, constraint4, constraint5, constraint6]))
 
-        res_4 = (GG_peak_2[0] + ki)**2 - kf2[0]
-        res_5 =  GG_peak_2[1]**2 - kf2[1]
-        res_6 =  GG_peak_2[2]**2 - kf2[2]
-        res2 = [res_4,res_5,res_6]
 
-        res_7 = (GG_peak_3[0] + ki)**2 - kf3[0]
-        res_8 =  GG_peak_3[1]**2 - kf3[1]
-        res_9 =  GG_peak_3[2]**2 - kf3[2]
-        res3 = [res_7, res_8, res_9]
-
-        return  np.concatenate((res1, res2, res3, [constraint1, constraint2, constraint3, constraint4, constraint5, constraint6, constraint7, constraint8, constraint9]))
-
-        #return [res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8, res_9, constraint1, constraint2, constraint3,constraint4, constraint5, constraint6, constraint7, constraint8, constraint9, constraint10, constraint11, constraint12, constraint13, constraint14, constraint15]
-
-    sol = least_squares(residuals, crystal_orient_guess, bounds=bounds, verbose = 2)
-    print(sol.jac)
+    #sol = least_squares(residuals, crystal_orient_guess, bounds=bounds, verbose = 2)
+    sol = least_squares(residuals, crystal_orient_guess, verbose = 2, method = "lm")
+    #print(sol.jac)
     #np.linalg.inv()
+
+    print(sol)
 
     solution = np.array([
         [sol.x[0], sol.x[1], sol.x[2]],
@@ -324,12 +281,9 @@ def single_crystal_orientation(phase, wavelength, sample_detector_distance,
         [sol.x[6], sol.x[7], sol.x[8]]
     ])
 
-    #current_crystal_orientation = apply_rotation(solution, rotx = rotations_peak_3[0], roty = rotations_peak_3[1], rotz = rotations_peak_3[2], rotation_order = "xyz")
 
-    
+    print(solution)
     return np.round(solution, 3)
-#"""
-    
 
 
 
@@ -405,7 +359,7 @@ class Monoclinic_Lattice(Lattice_Structure):
 
 class Detector:
     def __init__(self, detector_type, sample_detector_distance = None, tilting_angle = 0, beam_center = (0,0), margin = 0):
-        
+
         #The beam_center = (0,0) corresponds to the lower center part of the detector. This is to be changed eventually...
 
         self.detector_type = detector_type #I just want to make it accessible 
@@ -438,33 +392,20 @@ class Detector:
         
         
     def Max_Detectable_Z(self):
-        #self.tilting_angle = self.tilting_angle
-        #max_theta_z = np.arctan(np.cos(self.tilting_angle)/((self.sample_detector_distance/(self.height - self.beam_center[1])) - np.sin(self.tilting_angle)))
-        #max_dz = (1 - self.margin/100)*self.sample_detector_distance*np.tan(max_theta_z)/(np.cos(self.tilting_angle) + np.tan(max_theta_z)*np.sin(self.tilting_angle))
-
         max_dz = (1 - self.margin/100)*(self.height - self.beam_center[1])*np.cos(self.tilting_angle)
 
         return max_dz
     
     def Min_Detectable_Z(self):
-        #self.tilting_angle = self.tilting_angle
-        #max_theta_z = np.arctan(np.cos(self.tilting_angle)/((self.sample_detector_distance/self.height) - np.sin(self.tilting_angle)))
-
-        #min_dz = self.sample_detector_distance*np.tan(max_theta_z)/(np.cos(self.tilting_angle) + np.tan(max_theta_z)*np.sin(self.tilting_angle))
-
         min_dz = (-self.beam_center[1])*(1 - self.margin/100)
 
         return min_dz
     
     def Max_Detectable_Y(self):
-        #max_theta_y = np.arctan((self.width/2 - self.beam_center[0])/(self.sample_detector_distance))
-        #max_dy = (1 - self.margin/100)*self.sample_detector_distance*np.tan(max_theta_y)
         max_dy = (1 - self.margin/100)*(self.width/2 - self.beam_center[0])
         return max_dy
 
     def Min_Detectable_Y(self):
-        #min_theta_y = np.arctan((-self.width/2 - self.beam_center[0])/(self.sample_detector_distance))
-        #min_dy = (1 - self.margin/100)*self.sample_detector_distance*np.tan(min_theta_y)
         min_dy = (1 - self.margin/100)*(-self.width/2 - self.beam_center[0])
         return min_dy
         
@@ -571,74 +512,6 @@ class Oxygen(Atom):
         super().__init__(symbol, atomic_structure_factor)
 
 
-
-#hkls = [[1,1,0], [-1,-1,0], [-2,-1,4], [2,1,4]]
-#for hkl in hkls:
-#    XRD.simulation.tracking_specific_reflections(phase = "Hexagonal", detector = "Rigaku", sample_detector_distance = 60.87, tilting_angle = 0,wavelength = 0.7107, rot_x_start = -180, rot_x_end = 180, step_rot_x = 3, rot_z_start = -180, rot_z_end = 180, step_rot_z=3, E_bandwidth = 5, desired_reflections_list = [hkl], margin = 0)
-
-
-
-
-"""
-def forbidden_reflections(phase, hkl):
-    h = hkl[0]
-    k = hkl[1]
-    l = hkl[2]
-    
-    if (h == k) and (k == l) and (l== 0):
-        return True #Ruling out the [0,0,0]
-    
-    if phase == "Hexagonal":
-        "Rules for space group 167"
-        if (h == k) and (l%3 != 0):
-            return True
-        if (h == -k) and ((h+l)%3 != 0) and (l%2 != 0):
-            return True
-        if ((-h + k + l)%3 != 0):
-            return True
-        if ((h -k + l)%3 != 0):
-            return True
-    else:
-        pass
-        
-    if phase == "Monoclinic":    
-        "Rules for space group 15, representation 13"
-        if (h == k) and (k == 0) and (l%2 != 0):
-            return True
-        if (h == l) and (l == 0) and (k%2 != 0):
-            return True
-        if (k == l) and (l == 0) and (h%2 != 0):
-            return True
-        if (h == 0) and ((k+l)%2 != 0):
-            return True
-        if (k == 0) and (h%2 != 0) and (l%2 != 0):
-            return True
-        if (l == 0) and ((h+k)%2 != 0):
-            return True
-        if ((h+k+l)%2 != 0):
-            return True
-    else:
-        pass
-        
-    return False
-
-def create_possible_reflections(phase, smallest_number, largest_number):
-
-    rango_hkl = range(smallest_number, largest_number + 1)
-    combinaciones_hkl = []
-    for h in rango_hkl:
-        for k in rango_hkl:
-            for l in rango_hkl:
-                hkl = [h,k,l]
-                if forbidden_reflections(phase, hkl) == False:
-                    combinaciones_hkl.append(np.array([hkl[0], hkl[1], hkl[2]]))
-                else:
-                    pass
-    combinaciones_hkl = np.array(combinaciones_hkl)
-    return combinaciones_hkl
-
-"""   
-
 """ #I am still thinking whether is better to use quaternions or not...
 def apply_rotation(initial_matrix, rotx = 0, roty = 0, rotz = 0):
     rotx = np.radians(rotx)
@@ -662,9 +535,6 @@ def apply_rotation(initial_matrix, rotx = 0, roty = 0, rotz = 0):
         [0, 0, 1]
     ])
 
-    #total_rotation = np.dot(rotation_matrix_z, np.dot(rotation_matrix_y, rotation_matrix_x))
-    #rotated_matrix = np.dot(total_rotation,initial_matrix.T).T
-
     total_rotation = np.dot(rotation_matrix_x, np.dot(rotation_matrix_y, rotation_matrix_z))
     rotated_matrix = np.dot(initial_matrix, total_rotation)
 
@@ -672,15 +542,6 @@ def apply_rotation(initial_matrix, rotx = 0, roty = 0, rotz = 0):
 
 """
 
-"""
-def cal_reciprocal_lattice(vector1, vector2, vector3):
-    volume = np.dot(vector1, np.cross(vector2, vector3))
-    rec_vec1 = (2*np.pi/volume)*np.cross(vector2, vector3)
-    rec_vec2 = (2*np.pi/volume)*np.cross(vector3, vector1)
-    rec_vec3 = (2*np.pi/volume)*np.cross(vector1, vector2)
-    return rec_vec1, rec_vec2, rec_vec3
-
-"""
 
 """
 def allowed_reflections(phase, hkl):
@@ -713,19 +574,4 @@ def allowed_reflections(phase, hkl):
         return True
 """
 
-"""
-def create_possible_reflections(phase, smallest_number, largest_number):
 
-    rango_hkl = range(smallest_number, largest_number + 1)
-    combinaciones_hkl = []
-    for h in rango_hkl:
-        for k in rango_hkl:
-            for l in rango_hkl:
-                hkl = [h,k,l]
-                if allowed_reflections(phase, hkl) == True:
-                    combinaciones_hkl.append(np.array([hkl[0], hkl[1], hkl[2]]))
-                else:
-                    pass
-    combinaciones_hkl = np.array(combinaciones_hkl)
-    return combinaciones_hkl
-"""
