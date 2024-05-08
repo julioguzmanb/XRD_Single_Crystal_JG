@@ -5,7 +5,7 @@ import XRD_Single_Crystal_JG.utils as utils
 import XRD_Single_Crystal_JG.plot as plot
 plt.ion()
 
-def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None, rotation_order = "xyz"):
+def Ewald_Construction(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None, rotation_order = "xyz"):
 
     #Creating lattice structure
     if phase == "Monoclinic":
@@ -24,11 +24,10 @@ def reciprocal_space(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_
 
     plot.plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth)
 
-def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz"):
-
+def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz", binning = (1,1)):
 
     #Creating detector instance
-    detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center)
+    detector = utils.Detector(detector_type = detector, sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
     #Creating lattice structure
     if phase == "Monoclinic":
@@ -51,20 +50,22 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
     Q_hkls = Q_hkls[in_bragg_condition] #using bragg condition mask
     hkls = hkls[in_bragg_condition] #using bragg condition mask
 
-    diffracted_information = utils.diffraction_direction(Q_hkls, wavelength, sample_detector_distance, tilting_angle) #Calculating direction of diffracted x rays
+    diffracted_information = utils.diffraction_direction(Q_hkls, detector, wavelength) #Calculating direction of diffracted x rays
 
     diffraction_in_detector = utils.diffraction_in_detector(diffracted_information, detector) #calling diffraction in detector mask
 
     diffracted_information = diffracted_information[diffraction_in_detector][:,1:3] #using diffraction in detector mask
     hkls = hkls[diffraction_in_detector] #using diffraction in detector mask
 
-    dy = diffracted_information[:,0] + detector.beam_center[0]
-    dz = diffracted_information[:,1] + detector.beam_center[1]
+    
+    dy = -diffracted_information[:,0]/detector.pixel_size[0]
+    dz = diffracted_information[:,1]/detector.pixel_size[1]
             
     #Creating the dictionnary for storing the data
     data = {}
     data["crystal"] = {}
     data["crystal"]["phase"] = phase
+    data["wavelength"]= wavelength*1e10
     data["crystal"]["orientation"] = [rotx, roty, rotz]
     data["crystal"]["lattice_params"] = [lattice_structure.crystal_orientation[0], lattice_structure.crystal_orientation[1], lattice_structure.crystal_orientation[2]]
     data["detector"] = detector
@@ -76,15 +77,98 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         print("No (hkl) reflections seen in the detector!!")
     
     elif len(hkls) == 1:
-        plot.plot_detector(data, beam_center = beam_center)
+        plot.plot_detector(data)
     
     elif len(hkls) >=2:
-        plot.plot_detector(data, beam_center = beam_center, colorize = True)
+        plot.plot_detector(data, colorize = True)
 
 
-def tracking_specific_reflections(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, desired_reflections_list, tilting_angle = 0, margin = 0, beam_center = (0,0), savefig = False, fig_name = None, initial_crystal_orientation = None, rotation_order = "xyz"):
+    
+def parameter_change_mapping(phase, selected_parameter, initial_param_value, final_param_value, step, hkl, detector, sample_detector_distance, wavelength, E_bandwidth, tilting_angle = 0, rotx = 0, rotz = 0, margin = 0, beam_center = (0,0), binning = (1,1)):
+    
+    detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
-    detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center)
+    number_of_steps = int(abs((initial_param_value - final_param_value)/step)) +1
+    params = np.linspace(initial_param_value, final_param_value, number_of_steps)
+
+    data = {}
+    data["dy"] = []
+    data["dz"] = []
+    data["param_value"] = []
+
+    for param in params:
+        
+        lattice_params = {
+            "a":None,
+            "b":None,
+            "c":None,
+            "alpha":None,
+            "beta":None,
+            "gamma":None
+        }
+
+        lattice_params[selected_parameter] = param
+
+        if phase == "Monoclinic":
+            lattice_structure = utils.Monoclinic_Lattice(a = lattice_params["a"], b = lattice_params["b"], c = lattice_params["c"], alpha = lattice_params["alpha"], beta = lattice_params["beta"], gamma = lattice_params["gamma"])
+        elif phase == "Hexagonal":
+            lattice_structure = utils.Hexagonal_Lattice( a = lattice_params["a"], c = lattice_params["c"], alpha = lattice_params["alpha"], beta = lattice_params["beta"], gamma = lattice_params["gamma"])
+
+        lattice_structure.Apply_Rotation(rotx = rotx, rotz = rotz)
+        
+        #Calculating the momentum transfer vectors
+        Q_hkls = utils.calculate_Q_hkl([hkl], lattice_structure.reciprocal_lattice)
+        print(lattice_structure.reciprocal_lattice)
+        
+        if utils.check_Bragg_condition(Q_hkls, wavelength, E_bandwidth) == True: #Calling bragg condition mask
+            diffracted_information = utils.diffraction_direction(Q_hkls, detector, wavelength) #Calculating direction of diffracted x rays
+
+            if utils.diffraction_in_detector(diffracted_information, detector) == True: #calling diffraction in detector mask
+                dy = -diffracted_information[:,1:3][:,0]/detector.pixel_size[0]
+                dz = diffracted_information[:,1:3][:,1]/detector.pixel_size[1]
+
+                data["dy"].append(dy)
+                data["dz"].append(dz)
+                data["param_value"].append(round(param, 4))
+
+        else:
+            pass
+
+    if len(data["dy"]) > 0:
+
+        fig_size = (7.2*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
+        fig_size_ratio = abs(detector.Min_Detectable_Y())/abs(detector.Max_Detectable_Z())
+        plt.figure(figsize = (fig_size[0], fig_size[1]))
+        plt.rcParams.update({'font.size': 16})
+        plt.gca().set_aspect(fig_size_ratio, adjustable='box')
+        plt.xlim(abs(detector.Max_Detectable_Y()/detector.pixel_size[0]), abs(detector.Min_Detectable_Y()/detector.pixel_size[0]))
+        plt.xlabel("y-direction [pixel]",fontsize = 16)
+        plt.ylim(detector.Min_Detectable_Z()/detector.pixel_size[1], detector.Max_Detectable_Z()/detector.pixel_size[1])
+        plt.ylabel("z-direction [pixel]",fontsize = 16)
+        plt.tight_layout()
+        plt.grid()
+        plt.show()
+        #plt.gca().invert_xaxis()
+
+        #plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000, wavelength*1e10, phase, rotx, rotz))
+
+        [plt.scatter(y_val, z_val, label=label, s = 10) for y_val, z_val, label in zip(data["dy"], data["dz"], data["param_value"])]
+
+        if len(data["dy"]) > 1:
+            plot.Colorize(vector = list(range(len(data["param_value"]))), cmap = plt.cm.jet)
+
+
+        plt.scatter(beam_center[0], beam_center[1], label = "Beam Center",marker='x', color='black', s = 100)
+
+        plt.legend(title = selected_parameter, loc = "upper right", fontsize = 14, framealpha = 1)
+
+    
+    else:
+        print("No (hkl) reflections seen in the detector!!")
+
+def tracking_specific_reflections(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, desired_reflections_list, tilting_angle = 0, margin = 0, beam_center = (0,0), savefig = False, fig_name = None, initial_crystal_orientation = None, rotation_order = "xyz", binning = (0,0)):
+
+    detector = utils.Detector(detector_type = detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
     step_rots_x = int(abs((rot_x_start - rot_x_end)/step_rot_x)) +1
     rots_x = np.linspace(rot_x_start, rot_x_end, step_rots_x)
@@ -110,8 +194,7 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
                 Q_hkl =  utils.calculate_Q_hkl(hkl, lattice_structure.reciprocal_lattice)
 
                 if utils.check_Bragg_condition(Q_hkl, wavelength, E_bandwidth) == True: 
-                    diffracted_direction = utils.diffraction_direction(Q_hkl, wavelength, sample_detector_distance, tilting_angle)
-
+                    diffracted_direction = utils.diffraction_direction(Q_hkl, detector, wavelength)
 
                     if utils.diffraction_in_detector(diffracted_direction, detector) == True:
                         G = np.append(Q_hkl, 1)
@@ -170,20 +253,22 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
             pass
 
 
-def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz"):
+
+
+def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz", binning = (1,1)):
 
     if phase == "Monoclinic":
         lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
     elif phase == "Hexagonal":
         lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation)
     
-    detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center)
+    detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
     hkls = utils.create_possible_reflections(phase, smallest_number, largest_number)
 
     rots = list(range(0, 360, angular_step))
 
-    fig_size = (8*(detector.height/170)*detector.width/detector.height, 8*(detector.height/170))
+    fig_size = (7.2*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
     plt.figure(figsize = (fig_size[0], fig_size[1]))
 
 
@@ -192,12 +277,14 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
         plt.title("Detector = %s, Hexagonal"%detector.detector_type)
     elif phase == "Monoclinic":
         plt.title("Detector = %s, Monoclinic"%detector.detector_type)
+
     plt.grid()
     plt.ion()
-    plt.xlim(-0.5*detector.width, 0.5*detector.width)
-    plt.xlabel("Detector Width [mm]",fontsize = 16)
-    plt.ylim(0, detector.height)
-    plt.ylabel("Detector Height [mm]",fontsize = 16)
+    plt.xlim(abs(detector.Max_Detectable_Y()/detector.pixel_size[0]), abs(detector.Min_Detectable_Y()/detector.pixel_size[0]))
+    plt.xlabel("y-direction [pixel]",fontsize = 16)
+    plt.ylim(detector.Min_Detectable_Z()/detector.pixel_size[1], detector.Max_Detectable_Z()/detector.pixel_size[1])
+    plt.ylabel("z-direction [pixel]",fontsize = 16)
+
 
     dys = []
     dzs = []
@@ -210,14 +297,15 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
             Q_hkls = utils.calculate_Q_hkl(hkls, lattice_structure.reciprocal_lattice) #Creating Q vectors
             in_bragg_condition = utils.check_Bragg_condition(Q_hkls, wavelength, E_bandwidth) # Obtaining kf vectors that are in Bragg Condition
             Q_hkls = Q_hkls[in_bragg_condition]
-            diffracted_information = utils.diffraction_direction(Q_hkls, wavelength, sample_detector_distance, tilting_angle) #Calculating direction of diffracted x rays
+            diffracted_information = utils.diffraction_direction(Q_hkls, detector, wavelength) #Calculating direction of diffracted x rays
             diffraction_in_detector = utils.diffraction_in_detector(diffracted_information, detector) #checking if diff x-rays are in the detector
             diffracted_information = diffracted_information[diffraction_in_detector][:,1:3]
 
             if len(diffracted_information != 0):
-                dy = diffracted_information[:,0] + detector.beam_center[0]
-                dz = diffracted_information[:,1] + detector.beam_center[1]
-                
+
+                dy = -diffracted_information[:,0]/detector.pixel_size[0]
+                dz = diffracted_information[:,1]/detector.pixel_size[1]
+
                 dys.append(dy)
                 dzs.append(dz)
             

@@ -52,11 +52,14 @@ def Colorize(vector, vmin=None, vmax=None, ax=None, cmap=plt.cm.jet):
 
 def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
 
+    wavelength = wavelength*1e10
+
     ewald_sphere = utils.Ewald_Sphere(wavelength, E_bandwidth)
     ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
+
     kf_hkls = Q_hkls + ki
 
-    in_bragg_condition = utils.check_Bragg_condition(Q_hkls, wavelength, E_bandwidth)
+    in_bragg_condition = utils.check_Bragg_condition(Q_hkls, wavelength*1e-10, E_bandwidth)
 
     fig = plt.figure(figsize=(10, 8))
     plt.rcParams.update({'font.size': 15})
@@ -85,7 +88,7 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     x_ewald = ewald_sphere.Get_Radius() * np.cos(u) * np.sin(v)
     y_ewald = ewald_sphere.Get_Radius() * np.sin(u) * np.sin(v)
     z_ewald = ewald_sphere.Get_Radius() * np.cos(v)
-    ax.plot_surface(x_ewald, y_ewald, z_ewald, color='lightgreen', alpha=0.05, linewidth=0)
+    ax.plot_surface(x_ewald, y_ewald, z_ewald, color='lightgreen', alpha=0.15, linewidth=0)
 
     # Add labels
     ax.set_xlabel('X')
@@ -115,18 +118,20 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     plt.show()
 
 
-def plot_detector(data, beam_center = (0,0), colorize = False):
-    data["detector"]
-    fig_size = (8*(data["detector"].height/170)*data["detector"].width/data["detector"].height , 8*(data["detector"].height/170))
-    
+def plot_detector(data, colorize = False):
+    detector = data["detector"]
+    fig_size = (7*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
     plt.figure(figsize = (fig_size[0], fig_size[1]))
-    plt.rcParams.update({'font.size': 16})
 
-    a_x, a_y, a_z = np.round(data["crystal"]["lattice_params"][0], 3)
-    b_x, b_y, b_z = np.round(data["crystal"]["lattice_params"][1], 3)
-    c_x, c_y, c_z = np.round(data["crystal"]["lattice_params"][2], 3)
+    plt.rcParams.update({'font.size': 14})
+    #fig_size_ratio = abs(detector.Min_Detectable_Y())/abs(detector.Max_Detectable_Z())
+    #plt.gca().set_aspect(fig_size_ratio, adjustable='box')
 
-    plt.title("Detector = %s, Phase = %s, $\\phi$ = %s°\na = (%s x, %s y, %s z)\nb = (%s x, %s y, %s z)\nc = (%s x, %s y, %s z)\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(data["detector"].detector_type, data["crystal"]["phase"], np.round(np.rad2deg(data["detector"].tilting_angle),1), a_x, a_y, a_z, b_x, b_y, b_z, c_x, c_y, c_z, data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
+    #a_x, a_y, a_z = np.round(data["crystal"]["lattice_params"][0], 3)
+    #b_x, b_y, b_z = np.round(data["crystal"]["lattice_params"][1], 3)
+    #c_x, c_y, c_z = np.round(data["crystal"]["lattice_params"][2], 3)
+
+    plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000,data["wavelength"], data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
     
     if colorize == True:
         [plt.scatter(y_val, z_val, label=label) for y_val, z_val, label in zip(data["y_coordinate"], data["z_coordinate"], data["hkls"])]
@@ -135,17 +140,17 @@ def plot_detector(data, beam_center = (0,0), colorize = False):
     else:
         [plt.scatter(y_val, z_val, label=label, color = "blue") for y_val, z_val, label in zip(data["y_coordinate"], data["z_coordinate"], data["hkls"])]
     
-    plt.scatter(beam_center[0], beam_center[1], label = "Beam Center",marker='x', color='black', s = 100)
-    plt.legend(title = "(h,k,l)", loc = "upper right", fontsize = 14, framealpha = 1)
+    plt.scatter(detector.beam_center[0], detector.beam_center[1], label = "Beam Center",marker='x', color='black', s = 100)
+    plt.legend(title = "(h,k,l)", loc = "upper right", fontsize = 14, framealpha = 0.4)
 
-    plt.xlim(-0.5*data["detector"].width, 0.5*data["detector"].width)
-    plt.xlabel("Detector Width [mm]",fontsize = 16)
-    plt.ylim(0, data["detector"].height)
-    plt.ylabel("Detector Height [mm]",fontsize = 16)
+    plt.xlim(abs(detector.Max_Detectable_Y()/detector.pixel_size[0]), abs(detector.Min_Detectable_Y()/detector.pixel_size[0]))
+    plt.xlabel("y-direction [pixel]",fontsize = 16)
+    plt.ylim(detector.Min_Detectable_Z()/detector.pixel_size[1], detector.Max_Detectable_Z()/detector.pixel_size[1])
+    plt.ylabel("z-direction [pixel]",fontsize = 16)
     plt.tight_layout()
     plt.grid()
     plt.show()
-    plt.gca().invert_xaxis()
+    #plt.gca().invert_xaxis()
     
 
 
