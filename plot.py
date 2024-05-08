@@ -69,7 +69,7 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     for i, (x,y,z) in enumerate(kf_hkls[in_bragg_condition]):
         ax.scatter(x, y, z, label="(%s)"%(str(hkls.tolist()[i]).replace("[","").replace("]","").replace(",","")), s = 40)  # Plot points with colors
 
-    if len(hkls[in_bragg_condition]) > 0:
+    if len(hkls[in_bragg_condition]) > 1:
         Colorize(vector = list(range(len(hkls[in_bragg_condition]))),cmap=plt.cm.jet, ax = ax)
 
     ax.scatter(0, 0, 0, c='black', label='Ewald Center', s = 100)  # Plot center of Ewald sphere
