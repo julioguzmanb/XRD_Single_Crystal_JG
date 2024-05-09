@@ -237,7 +237,7 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
         plt.imshow(malla, extent=[x_min, x_max, z_min, z_max], origin="lower", cmap=cmap, vmin=0, vmax=1)
         plt.xlabel("Rotation$\parallel$x  [°]")
         plt.ylabel("Rotation$\parallel$z  [°]")
-        plt.title("(h,k,l)\n%s"%hkls.replace("[", "(").replace("]", ")"))
+        plt.title("(h,k,l)$_{%s}$\n%s"%(phase[0],hkls.replace("[", "(").replace("]", ")")))
         plt.tight_layout()
         plt.grid()
         plt.show()
