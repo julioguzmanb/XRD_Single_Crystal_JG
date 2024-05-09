@@ -411,16 +411,20 @@ class Monoclinic_Lattice(Lattice_Structure):
         #V_M = a*b*c*np.sin(np.deg2rad(beta))
 
         if initial_crystal_orientation is None:
+            #initial_crystal_orientation = np.array([
+            #[b/2 - np.sqrt((c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4)/3), 
+            #b/np.sqrt(12) - np.sqrt(c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4),  
+            #np.sqrt((14*c**2 - 4*a**2 + a*c*np.cos(np.radians(beta)))/9)],
+            #[b,0,0],
+            #[b/4 - np.sqrt((c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4)/12),
+            #b/np.sqrt(48) - 0.5*np.sqrt(c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4), 
+            #-np.sqrt((14*c**2 - 4*a**2 + a*c*np.cos(np.radians(beta)))/9)]
+            #])
+
             initial_crystal_orientation = np.array([
-            [b/2 - np.sqrt((c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4)/3), 
-            b/np.sqrt(12) - np.sqrt(c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4),  
-            np.sqrt((14*c**2 - 4*a**2 + a*c*np.cos(np.radians(beta)))/9)],
-
-            [b,0,0],
-
-            [b/4 - np.sqrt((c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4)/12),
-            b/np.sqrt(48) - 0.5*np.sqrt(c**2 + a*c*np.cos(np.radians(beta)) - (b**2)/4), 
-            -np.sqrt((14*c**2 - 4*a**2 + a*c*np.cos(np.radians(beta)))/9)]
+            [0, (2/np.sqrt(3))*np.sqrt(a*c*np.cos(np.radians(beta)) + c**2), (1/np.sqrt(3))*np.sqrt(a**2 - 2*a*c*np.cos(np.radians(beta))) ],
+            [a,                           0                                ,                                0                              ],
+            [0, (1/np.sqrt(3))*np.sqrt(a*c*np.cos(np.radians(beta)) + c**2), -(1/np.sqrt(3))*np.sqrt(a**2 - 2*a*c*np.cos(np.radians(beta)))]
             ])
 
         Vanadium_fractional_position = np.array([0.34460,    0.00500,    0.29850])
