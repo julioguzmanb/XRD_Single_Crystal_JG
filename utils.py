@@ -51,30 +51,6 @@ def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0, rotation_order = "xyz
     
     return rotated_matrix
 
-def allowed_reflections(phase, hkl):
-    h, k, l = hkl
-    
-    if (h == k == l == 0):
-        return False  # Ruling out the [0,0,0]
-    
-    if phase == "Hexagonal":
-        # Rules for space group 167
-        conditions = [
-            ((-h + k + l) % 3 == 0) and (h or k != 0) and (l % 2 == 0),
-            ((h - k + l) % 3 == 0) and (h or k != 0) and (l % 2 == 0),
-            (h == k != l) and (l % 3 == 0) and (h == k != 0),
-            (h == -k) and ((h + l) % 3 == 0) and (h or k != 0),
-            (h == -k) and ((k + l) % 3 == 0) and (h or k != 0),
-            (h == k == 0) and (l % 2 == 0) and (l % 3 == 0)
-        ]
-        
-        if any(conditions):
-            return True
-    
-    elif phase == "Monoclinic":
-        return True
-    
-    return False
 
 def allowed_reflections(phase, hkl):
     h, k, l = hkl
@@ -159,13 +135,22 @@ def calculate_Q_hkl(hkl, reciprocal_lattice):
 
     return Q_hkl
 
+def calculate_dspacing(hkl, reciprocal_lattice):
+    Q_hkl = np.linalg.norm(calculate_Q_hkl(hkl, reciprocal_lattice), axis = 1)
+    dspacing_values = 2*np.pi/Q_hkl
+    return dspacing_values
+
+def calculate_two_theta(hkl, reciprocal_lattice, wavelength):
+    wavelength = wavelength*1e10
+    Q_hkl = np.linalg.norm(calculate_Q_hkl(hkl, reciprocal_lattice), axis = 1)
+    two_thetas = np.rad2deg(2*np.arcsin(wavelength*Q_hkl/(4*np.pi))) #in Degrees
+    return two_thetas
+
 def check_Bragg_condition(Q_hkls, wavelength, E_bandwidth):
 
     wavelength = wavelength*1e10 #Going from m to Å
 
     ewald_sphere = Ewald_Sphere(wavelength, E_bandwidth)
-
-    
 
     ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
     kf = Q_hkls + ki  # Add ki to each Q_hkl
@@ -175,6 +160,7 @@ def check_Bragg_condition(Q_hkls, wavelength, E_bandwidth):
     in_bragg_condition = (kf_hkl_module >= ewald_sphere.Get_Inner_Radius()) & (kf_hkl_module <= ewald_sphere.Get_Outer_Radius())
         
     return in_bragg_condition
+
 
 
 def diffraction_direction(Q_hkls, detector, wavelength):
@@ -205,25 +191,27 @@ def diffraction_direction(Q_hkls, detector, wavelength):
     try:
         denominator = kfxz[:,0]/np.linalg.norm(kfxz, axis=1)
         mask = np.abs(denominator) < 1
-        numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator[mask]))
-        dz[mask] = np.sign(kf_hkls[mask, 2]) * sample_detector_distance / (numerator + np.sin(tilting_angle)) 
+        numerator = np.sign(kf_hkls[mask, 2]) / np.tan(np.arccos(denominator[mask])) + np.tan(tilting_angle)
+        dz[mask] = (sample_detector_distance - beam_center[1]*np.tan(tilting_angle)) /numerator
         
     except ZeroDivisionError:
         pass
 
     try:
         mask = np.abs(kfxz[:,0]/(np.linalg.norm(kfxy, axis=1))) < 1
-        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask] * np.sin(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask] / (np.linalg.norm(kfxy[mask], axis=1)))) 
+
+        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask]*np.tan(tilting_angle) - beam_center[1]*np.tan(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask]/np.linalg.norm(kfxy[mask], axis=1))) 
 
     except ZeroDivisionError:
         pass
     
-    dz = dz + beam_center[1]
+    dz = (dz + beam_center[1])/np.cos(tilting_angle)
     dy = dy + beam_center[0]
 
     diffracted_information = np.stack((dx, dy, dz), axis=1)
 
     return diffracted_information
+
 
 def diffraction_in_detector(diffracted_information, detector):
     #Detector must be an object
@@ -805,6 +793,55 @@ def diffraction_direction(Q_hkls, wavelength, sample_detector_distance, tilting_
         pass
 
     diffracted_information = np.stack((dx, dy, dz), axis=1) #In meters since sample detector distance was introduced like this
+
+    return diffracted_information
+"""
+"""
+def diffraction_direction(Q_hkls, detector, wavelength):
+    #sample_detector_distance is in meters. So dx, dy, dz will be too.
+    
+    beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1])
+
+    tilting_angle = np.radians(detector.tilting_angle)
+
+    sample_detector_distance = detector.sample_detector_distance
+
+    wavelength = wavelength*1e10 #Going from m to Å
+
+    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
+    kf_hkls = Q_hkls + ki 
+    
+    dx, dy, dz = np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls))
+
+    kfxy = kf_hkls.copy()
+    kfxy[:, 2] = 0  # Set the third component to zero for all rows
+
+    kfxz = kf_hkls.copy()
+    kfxz[:, 1] = 0  # Set the second component to zero for all rows
+
+    # Calculate dx
+    dx[kf_hkls[:, 0] > 0] = 1
+
+    try:
+        denominator = kfxz[:,0]/np.linalg.norm(kfxz, axis=1)
+        mask = np.abs(denominator) < 1
+        numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator[mask]))
+        dz[mask] = np.sign(kf_hkls[mask, 2]) * sample_detector_distance / (numerator + np.sin(tilting_angle)) 
+        
+    except ZeroDivisionError:
+        pass
+
+    try:
+        mask = np.abs(kfxz[:,0]/(np.linalg.norm(kfxy, axis=1))) < 1
+        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask] * np.sin(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask] / (np.linalg.norm(kfxy[mask], axis=1)))) 
+
+    except ZeroDivisionError:
+        pass
+    
+    dz = dz + beam_center[1]
+    dy = dy + beam_center[0]
+
+    diffracted_information = np.stack((dx, dy, dz), axis=1)
 
     return diffracted_information
 """

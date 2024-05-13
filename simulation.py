@@ -73,14 +73,19 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
     data["y_coordinate"] = dy
     data["z_coordinate"] = dz
 
-    if len(hkls) == 0:
+    if len(hkls) > 0:
+        plt.rcParams.update({'font.size': 14})
+        fig_size = (7*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
+        plt.figure(figsize = (fig_size[0], fig_size[1]))
+        plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000,data["wavelength"], data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
+        
+        if len(hkls) > 1:
+            plot.plot_detector(data, colorize = True)
+        else:
+            plot.plot_detector(data)
+        
+    else:
         print("No (hkl) reflections seen in the detector!!")
-    
-    elif len(hkls) == 1:
-        plot.plot_detector(data)
-    
-    elif len(hkls) >=2:
-        plot.plot_detector(data, colorize = True)
 
 
     
@@ -266,7 +271,7 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
 
     hkls = utils.create_possible_reflections(phase, smallest_number, largest_number)
 
-    rots = list(range(0, 360, angular_step))
+    rots = np.linspace(0, 360, int(abs((360)/angular_step)) + 1) 
 
     fig_size = (7.2*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
     plt.figure(figsize = (fig_size[0], fig_size[1]))
