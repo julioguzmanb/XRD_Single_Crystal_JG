@@ -150,7 +150,6 @@ def plot_detector(data, colorize = False):
     plt.tight_layout()
     plt.grid()
     plt.show()
-    #plt.gca().invert_xaxis()
     
 def plot_guidelines(hkls, lattice_structure, detector, wavelength):
 
@@ -179,7 +178,7 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     Y = Y/(-detector.pixel_size[0])
     Z = Z/(detector.pixel_size[1])
 
-    y = y + detector.beam_center[0] # Centrar el círculo 
+    y = y + detector.beam_center[0]
     z = z + detector.beam_center[1]
 
     plt.plot(Y, Z, "--",color = "black", linewidth = 2)
@@ -203,7 +202,6 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
         pixel_size = detector.pixel_size
         beam_center = np.array([-detector.beam_center[0] * pixel_size[0], detector.beam_center[1] * pixel_size[1]]) # In meters
 
-
         # Convert pixel positions to meters
         y_m = y * (-pixel_size[0])
         z_m = z * pixel_size[1]
@@ -222,11 +220,16 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     Z = Z / detector.pixel_size[1]
 
     # Plot all distorted circles
-    for i in range(len(hkls)):
-        plt.plot(Y[i], Z[i], "--", color="black", linewidth=2)
-        #plt.text(Y[i][0], Z[i][0], f'{str(hkls[i]).replace("[", "(").replace("]", ")")}', fontsize=10,  ha='center')
+    if len(hkls) == 1:
+        plt.plot(Y[i], Z[i], "--", color="black", linewidth=2, label = str(hkls[i]).replace("[", "(").replace("]", ")"))
+
+    else:
+        hkls_color = np.linspace(0, 1, len(hkls))
+        for i in range(len(hkls)):
+            plt.plot(Y[i], Z[i], "--", color = plt.cm.jet(hkls_color[i]),linewidth=1, label = str(hkls[i]).replace("[", "(").replace("]", ")"))
     
-    
+    plt.legend(title = "(h,k,l)", loc = "upper right", fontsize = 12, framealpha = 0.95)
+
     plt.show()
 
 
