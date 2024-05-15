@@ -86,8 +86,6 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         
     else:
         print("No (hkl) reflections seen in the detector!!")
-
-
     
 def parameter_change_mapping(phase, selected_parameter, initial_param_value, final_param_value, step, hkl, detector, sample_detector_distance, wavelength, E_bandwidth, tilting_angle = 0, rotx = 0, rotz = 0, margin = 0, beam_center = (0,0), binning = (1,1)):
     
@@ -257,10 +255,7 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
         else:
             pass
 
-
-
-
-def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz", binning = (1,1)):
+def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz", binning = (1,1), hkls = None):
 
     if phase == "Monoclinic":
         lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
@@ -269,7 +264,8 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
     
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
-    hkls = utils.create_possible_reflections(phase, smallest_number, largest_number)
+    if hkls == None:
+        hkls = utils.create_possible_reflections(phase, smallest_number, largest_number)
 
     rots = np.linspace(0, 360, int(abs((360)/angular_step)) + 1) 
 

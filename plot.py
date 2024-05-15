@@ -152,6 +152,83 @@ def plot_detector(data, colorize = False):
     plt.show()
     #plt.gca().invert_xaxis()
     
+def plot_guidelines(hkls, lattice_structure, detector, wavelength):
+
+    two_theta = utils.calculate_two_theta(hkl = hkls, reciprocal_lattice=lattice_structure.reciprocal_lattice, wavelength=wavelength)
+    r = detector.sample_detector_distance*np.tan(np.radians(two_theta))
+
+    theta = np.linspace(0, 2*np.pi, 100)
+
+    y = r * np.cos(theta)/(-detector.pixel_size[0])
+    z = r * np.sin(theta)/(detector.pixel_size[1])
+
+    def distort_circle(y,z, detector):
+        tilting_angle = np.radians(detector.tilting_angle)
+
+        y = y*(-detector.pixel_size[0])
+        z = z*(detector.pixel_size[1])
+
+        beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1]) #In meters
+
+        Z = (z + beam_center[1])/(z*np.sin(tilting_angle)/detector.sample_detector_distance + np.cos(tilting_angle))
+
+        Y = ((detector.sample_detector_distance - beam_center[1]*np.tan(tilting_angle))/(detector.sample_detector_distance + z*np.tan(tilting_angle)))*y + beam_center[0]
+        return Y,Z
+    
+    Y,Z = distort_circle(y,z, detector)
+    Y = Y/(-detector.pixel_size[0])
+    Z = Z/(detector.pixel_size[1])
+
+    y = y + detector.beam_center[0] # Centrar el círculo 
+    z = z + detector.beam_center[1]
+
+    plt.plot(Y, Z, "--",color = "black", linewidth = 2)
+
+
+def plot_guidelines(hkls, lattice_structure, detector, wavelength):
+
+    hkls = np.array(hkls)
+
+    two_theta = utils.calculate_two_theta(hkl=hkls, reciprocal_lattice=lattice_structure.reciprocal_lattice, wavelength=wavelength)
+    r = detector.sample_detector_distance * np.tan(np.radians(two_theta))
+
+    theta = np.linspace(0, 2 * np.pi, 100)
+
+    # Calculate y and z for each hkl using broadcasting
+    y = np.outer(r, np.cos(theta)) / (-detector.pixel_size[0])
+    z = np.outer(r, np.sin(theta)) / detector.pixel_size[1]
+
+    def distort_circle(y, z, detector):
+        tilting_angle = np.radians(detector.tilting_angle)
+        pixel_size = detector.pixel_size
+        beam_center = np.array([-detector.beam_center[0] * pixel_size[0], detector.beam_center[1] * pixel_size[1]]) # In meters
+
+
+        # Convert pixel positions to meters
+        y_m = y * (-pixel_size[0])
+        z_m = z * pixel_size[1]
+
+        # Compute Z and Y using vectorized operations
+        Z = (z_m + beam_center[1]) / (z_m * np.sin(tilting_angle) / detector.sample_detector_distance + np.cos(tilting_angle))
+        Y = ((detector.sample_detector_distance - beam_center[1] * np.tan(tilting_angle)) / (detector.sample_detector_distance + z_m * np.tan(tilting_angle))) * y_m + beam_center[0]
+
+        return Y, Z
+
+    # Apply distortion to all circles
+    Y, Z = distort_circle(y, z, detector)
+
+    # Convert Y and Z back to pixels
+    Y = Y / (-detector.pixel_size[0])
+    Z = Z / detector.pixel_size[1]
+
+    # Plot all distorted circles
+    for i in range(len(hkls)):
+        plt.plot(Y[i], Z[i], "--", color="black", linewidth=2)
+        #plt.text(Y[i][0], Z[i][0], f'{str(hkls[i]).replace("[", "(").replace("]", ")")}', fontsize=10,  ha='center')
+    
+    
+    plt.show()
+
 
 
 """

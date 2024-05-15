@@ -162,7 +162,6 @@ def check_Bragg_condition(Q_hkls, wavelength, E_bandwidth):
     return in_bragg_condition
 
 
-
 def diffraction_direction(Q_hkls, detector, wavelength):
     #sample_detector_distance is in meters. So dx, dy, dz will be too.
     
@@ -171,6 +170,8 @@ def diffraction_direction(Q_hkls, detector, wavelength):
     tilting_angle = np.radians(detector.tilting_angle)
 
     sample_detector_distance = detector.sample_detector_distance
+    #print(sample_detector_distance)
+    #print(beam_center)
 
     wavelength = wavelength*1e10 #Going from m to Å
 
@@ -188,25 +189,23 @@ def diffraction_direction(Q_hkls, detector, wavelength):
     # Calculate dx
     dx[kf_hkls[:, 0] > 0] = 1
 
+
     try:
-        denominator = kfxz[:,0]/np.linalg.norm(kfxz, axis=1)
-        mask = np.abs(denominator) < 1
-        numerator = np.sign(kf_hkls[mask, 2]) / np.tan(np.arccos(denominator[mask])) + np.tan(tilting_angle)
-        dz[mask] = (sample_detector_distance - beam_center[1]*np.tan(tilting_angle)) /numerator
-        
+        denominator = kfxz[:,0]
+        mask = denominator != 0
+        dz[mask] = ((kfxz[:, 2][mask]/denominator)*sample_detector_distance + beam_center[1])/((kfxz[:, 2][mask]/denominator)* np.sin(tilting_angle) + np.cos(tilting_angle))
+
     except ZeroDivisionError:
         pass
 
     try:
-        mask = np.abs(kfxz[:,0]/(np.linalg.norm(kfxy, axis=1))) < 1
+        denominator = kfxy[:,0]
+        mask = denominator != 0
 
-        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask]*np.tan(tilting_angle) - beam_center[1]*np.tan(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask]/np.linalg.norm(kfxy[mask], axis=1))) 
+        dy[mask] = (kfxy[:, 1][mask]/denominator)*(sample_detector_distance - dz[mask] * np.sin(tilting_angle)) + beam_center[0]
 
     except ZeroDivisionError:
         pass
-    
-    dz = (dz + beam_center[1])/np.cos(tilting_angle)
-    dy = dy + beam_center[0]
 
     diffracted_information = np.stack((dx, dy, dz), axis=1)
 
@@ -226,21 +225,132 @@ def single_crystal_orientation(phase, wavelength, detector, sample_detector_dist
 
     detector = Detector(detector_type = detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, beam_center = beam_center, binning = binning)
 
-    y_distances = (np.array(y_coordinates) - beam_center[0])*(-detector.pixel_size[0]) #in m
-    z_distances = (np.array(z_coordinates) - beam_center[1])*(detector.pixel_size[1])  #in m
+    beam_center = (beam_center[0]*(-detector.pixel_size[0]),beam_center[1]*(detector.pixel_size[1])) #in m
 
-    y_distances = y_distances*1e10 #Transforming to Å
-    z_distances = z_distances*1e10 #Transforming to Å
+    y_distances = np.array(y_coordinates)*(-detector.pixel_size[0]) #in m
+    z_distances = np.array(z_coordinates)*(detector.pixel_size[1])  #in m
+
     wavelength = wavelength*1e10 #Transforming to Å
-    sample_detector_distance = sample_detector_distance*1e10 #Transforming to Å
 
     def construct_kf_exp(wavelength, y_distance_from_center, z_distance_from_center, sample_detector_distance, tilting_angle = 0):
         
         tilting_angle = np.deg2rad(tilting_angle)
+
         ki = 2*np.pi/wavelength
-        kfy = (ki**2)*(1 - (1/(1/((sample_detector_distance/(z_distance_from_center*np.cos(tilting_angle)) - np.tan(tilting_angle))**2 + 1) + (np.cos(np.arctan(np.cos(tilting_angle)/(sample_detector_distance/z_distance_from_center - np.sin(tilting_angle))))/np.cos(np.arctan(y_distance_from_center/(sample_detector_distance - z_distance_from_center*np.sin(tilting_angle)))))**2)))
-        kfz = (ki**2 - kfy**2)/((sample_detector_distance/(z_distance_from_center*np.cos(tilting_angle)) - np.tan(tilting_angle))**2 + 1)
-        kfx = ki**2 - (kfy**2 + kfz**2)
+
+        kfy_sq = (ki**2)*(((beam_center[0] - y_distance_from_center)**2)/((z_distance_from_center*np.sin(tilting_angle) - sample_detector_distance)**2 + (beam_center[0] - y_distance_from_center)**2 + (beam_center[1] - z_distance_from_center*np.cos(tilting_angle))**2))
+
+        kfz_sq = (ki**2 - kfy_sq**2)*(((beam_center[1] - z_distance_from_center*np.cos(tilting_angle))**2)/((z_distance_from_center*np.sin(tilting_angle) - sample_detector_distance)**2 + (beam_center[1] - z_distance_from_center*np.cos(tilting_angle))**2))
+
+
+        kfx_sq = ki**2 - (kfy_sq + kfz_sq)
+        return np.array([kfx_sq, kfy_sq, kfz_sq]) #in Å^(-1)
+    
+    if phase == "Hexagonal":
+        lattice = Hexagonal_Lattice()
+        bounds = ([-lattice.c] * 9, [lattice.c] * 9)
+    
+    elif phase == "Monoclinic":
+        lattice = Monoclinic_Lattice()
+        bounds = ([-lattice.a] * 9, [lattice.a] * 9)
+
+    a, b, c, alpha, beta, gamma = lattice.a, lattice.b, lattice.c, lattice.alpha, lattice.beta, lattice.gamma
+
+    ki = 2*np.pi/wavelength #Transforming wavelength to Å 
+
+    def residuals(params):
+        A, B, C, D, E, F, G, H, I = params
+        Cryst_Orient = np.array([[A, B, C], [D, E, F], [G, H, I]])
+        
+        ress = []
+
+        constraint1 = np.linalg.norm(Cryst_Orient[0]) - a
+        constraint2 = np.linalg.norm(Cryst_Orient[1]) - b
+        constraint3 = np.linalg.norm(Cryst_Orient[2]) - c
+        constraint4 = np.dot(Cryst_Orient[0],  Cryst_Orient[1])   - a*b*np.cos(np.deg2rad(gamma))
+        constraint5 = np.dot(Cryst_Orient[1],  Cryst_Orient[2])   - b*c*np.cos(np.deg2rad(alpha))
+        constraint6 = np.dot(Cryst_Orient[2],  Cryst_Orient[0])   - c*a*np.cos(np.deg2rad(beta ))
+        constraints = [constraint1, constraint2, constraint3, constraint4, constraint5, constraint6]
+
+        for i in range(len(hkls)):
+            kf_sq = construct_kf_exp(wavelength, y_distances[i], z_distances[i], sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle)
+
+            Cryst_Orientation = apply_rotation(initial_matrix = Cryst_Orient, rotx = rotations[i][0], roty = rotations[i][1], rotz = rotations[i][2], rotation_order=rotation_order)
+            reciprocal_lattice = cal_reciprocal_lattice(Cryst_Orientation)
+            GG_peak = calculate_Q_hkl(hkls[i], reciprocal_lattice)
+
+            res_1 = (GG_peak[0] + ki)**2 - kf_sq[0]
+            res_2 =  GG_peak[1]**2       - kf_sq[1]
+            res_3 =  GG_peak[2]**2       - kf_sq[2]
+
+            # Restrictions
+            ress.append(res_1)
+            ress.append(res_2)
+            ress.append(res_3)
+
+            # Constraints
+
+            constraint_1 = np.linalg.norm(Cryst_Orientation[0]) - a
+            constraint_2 = np.linalg.norm(Cryst_Orientation[1]) - b
+            constraint_3 = np.linalg.norm(Cryst_Orientation[2]) - c
+            constraint_4 = np.dot(Cryst_Orientation[0],  Cryst_Orientation[1])   - a*b*np.cos(np.deg2rad(gamma))
+            constraint_5 = np.dot(Cryst_Orientation[1],  Cryst_Orientation[2])   - b*c*np.cos(np.deg2rad(alpha))
+            constraint_6 = np.dot(Cryst_Orientation[2],  Cryst_Orientation[0])   - c*a*np.cos(np.deg2rad(beta ))
+            constraints.append(constraint_1)
+            constraints.append(constraint_2)
+            constraints.append(constraint_3)
+            constraints.append(constraint_4)
+            constraints.append(constraint_5)
+            constraints.append(constraint_6)
+
+        return  np.concatenate((ress, constraints))
+
+
+    sol = least_squares(residuals, crystal_orient_guess, bounds=bounds, verbose = 2)
+    #sol = least_squares(residuals, crystal_orient_guess, verbose = 2, method = "lm")
+
+    #print(sol.jac)
+    #np.linalg.inv()
+
+    print(sol)
+
+    solution = np.array([
+        [sol.x[0], sol.x[1], sol.x[2]],
+        [sol.x[3], sol.x[4], sol.x[5]],
+        [sol.x[6], sol.x[7], sol.x[8]]
+    ])
+
+
+    print(solution)
+    return np.round(solution, 3)
+
+def single_crystal_orientation(phase, wavelength, detector, sample_detector_distance, beam_center,
+                               hkls, rotations, y_coordinates, z_coordinates,
+                               crystal_orient_guess, tilting_angle = 0, rotation_order = "xyz", binning = (1,1)):
+
+    #This long function is to be used when trying to retreive single crystal orientation given 3 Braggs.
+
+    detector = Detector(detector_type = detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, beam_center = beam_center, binning = binning)
+
+    beam_center = (beam_center[0]*(-detector.pixel_size[0]),beam_center[1]*(detector.pixel_size[1])) #in m
+
+    y_distances = np.array(y_coordinates)*(-detector.pixel_size[0]) #in m
+    z_distances = np.array(z_coordinates)*(detector.pixel_size[1])  #in m
+
+    wavelength = wavelength*1e10 #Transforming to Å
+
+    def construct_kf_exp(wavelength, y_distance_from_center, z_distance_from_center, sample_detector_distance, tilting_angle = 0):
+        
+        tilting_angle = np.deg2rad(tilting_angle)
+
+        ki = 2*np.pi/wavelength
+
+        kfy = ki*(y_distance_from_center - beam_center[0])/np.sqrt((z_distance_from_center*np.sin(tilting_angle) - sample_detector_distance)**2 + (beam_center[0] - y_distance_from_center)**2 + (beam_center[1] - z_distance_from_center*np.cos(tilting_angle))**2)
+
+        kfz = np.sqrt(ki**2 - kfy**2)*(beam_center[1] - z_distance_from_center*np.cos(tilting_angle))/np.sqrt((z_distance_from_center*np.sin(tilting_angle) - sample_detector_distance)**2 + (beam_center[1] - z_distance_from_center*np.cos(tilting_angle))**2)
+
+
+        kfx = np.sqrt(ki**2 - (kfy + kfz))
         return np.array([kfx, kfy, kfz]) #in Å^(-1)
     
     if phase == "Hexagonal":
@@ -276,9 +386,9 @@ def single_crystal_orientation(phase, wavelength, detector, sample_detector_dist
             reciprocal_lattice = cal_reciprocal_lattice(Cryst_Orientation)
             GG_peak = calculate_Q_hkl(hkls[i], reciprocal_lattice)
 
-            res_1 = (GG_peak[0] + ki)**2 - kf[0]
-            res_2 =  GG_peak[1]**2       - kf[1]
-            res_3 =  GG_peak[2]**2       - kf[2]
+            res_1 =  GG_peak[0] + ki - kf[0]
+            res_2 =  GG_peak[1]      - kf[1]
+            res_3 =  GG_peak[2]      - kf[2]
 
             # Restrictions
             ress.append(res_1)
@@ -721,96 +831,6 @@ def diffraction_direction(Q_hkls, detector, wavelength):
     ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
     kf_hkls = Q_hkls + ki 
     
-    dx, dy, dz = np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)) 
-
-    kfxy = kf_hkls.copy()
-    kfxy[:, 2] = 0  # Set the third component to zero for all rows
-
-    kfxz = kf_hkls.copy()
-    kfxz[:, 1] = 0  # Set the second component to zero for all rows
-
-    # Calculate dx
-    dx[kf_hkls[:, 0] > 0] = 1
-
-    try:
-
-        denominator = np.sin(np.pi/2 + tilting_angle - np.arccos(1/np.sqrt(1 + (kfxz[:, 2]/kfxz[:, 0])**2)))
-
-        dz = (sample_detector_distance*kfxz[:, 2]/kfxz[:, 0] + beam_center[1])*(1 - np.tan(tilting_angle)*np.sin(np.arccos(1/np.sqrt(1 + (kfxz[:, 2]/kfxz[:, 0])**2)))/denominator)
-        
-
-    except ZeroDivisionError:
-        pass
-
-    try:
-        dy = (kfxy[:, 1]/kfxy[:, 0])*(sample_detector_distance - dz*np.sin(tilting_angle)) + beam_center[0]
-
-    except ZeroDivisionError:
-        pass
-
-    diffracted_information = np.stack((dx, dy, dz), axis=1) #In meters since sample detector distance was introduced like this
-
-    return diffracted_information
-"""
-
-"""
-def diffraction_direction(Q_hkls, wavelength, sample_detector_distance, tilting_angle, beam_center = (0,0)):
-    #sample_detector_distance is in meters. So dx, dy, dz will be too.
-
-    tilting_angle = np.radians(tilting_angle)
-
-    wavelength = wavelength*1e10 #Going from m to Å
-
-    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
-    kf_hkls = Q_hkls + ki 
-    
-    dx, dy, dz = np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)) 
-
-    kfxy = kf_hkls.copy()
-    kfxy[:, 2] = 0  # Set the third component to zero for all rows
-
-    kfxz = kf_hkls.copy()
-    kfxz[:, 1] = 0  # Set the second component to zero for all rows
-
-    # Calculate dx
-    dx[kf_hkls[:, 0] > 0] = 1
-
-    try:
-        denominator = kfxz[:,0]/np.linalg.norm(kfxz, axis=1)
-        mask = np.abs(denominator) < 1
-        numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator[mask]))
-        dz[mask] = np.sign(kf_hkls[mask, 2]) * sample_detector_distance / (numerator + np.sin(tilting_angle))
-
-    except ZeroDivisionError:
-        pass
-
-    try:
-        mask = np.abs(kfxz[:,0]/(np.linalg.norm(kfxy, axis=1))) < 1
-        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask] * np.sin(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask] / (np.linalg.norm(kfxy[mask], axis=1))))
-
-
-    except ZeroDivisionError:
-        pass
-
-    diffracted_information = np.stack((dx, dy, dz), axis=1) #In meters since sample detector distance was introduced like this
-
-    return diffracted_information
-"""
-"""
-def diffraction_direction(Q_hkls, detector, wavelength):
-    #sample_detector_distance is in meters. So dx, dy, dz will be too.
-    
-    beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1])
-
-    tilting_angle = np.radians(detector.tilting_angle)
-
-    sample_detector_distance = detector.sample_detector_distance
-
-    wavelength = wavelength*1e10 #Going from m to Å
-
-    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
-    kf_hkls = Q_hkls + ki 
-    
     dx, dy, dz = np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls))
 
     kfxy = kf_hkls.copy()
@@ -825,20 +845,21 @@ def diffraction_direction(Q_hkls, detector, wavelength):
     try:
         denominator = kfxz[:,0]/np.linalg.norm(kfxz, axis=1)
         mask = np.abs(denominator) < 1
-        numerator = np.cos(tilting_angle) / np.tan(np.arccos(denominator[mask]))
-        dz[mask] = np.sign(kf_hkls[mask, 2]) * sample_detector_distance / (numerator + np.sin(tilting_angle)) 
+        numerator = np.sign(kf_hkls[mask, 2]) / np.tan(np.arccos(denominator[mask])) + np.tan(tilting_angle)
+        dz[mask] = (sample_detector_distance - beam_center[1]*np.tan(tilting_angle)) /numerator
         
     except ZeroDivisionError:
         pass
 
     try:
         mask = np.abs(kfxz[:,0]/(np.linalg.norm(kfxy, axis=1))) < 1
-        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask] * np.sin(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask] / (np.linalg.norm(kfxy[mask], axis=1)))) 
+
+        dy[mask] = np.sign(kf_hkls[mask, 1]) * (sample_detector_distance - dz[mask]*np.tan(tilting_angle) - beam_center[1]*np.tan(tilting_angle)) * np.tan(np.arccos(kfxz[:,0][mask]/np.linalg.norm(kfxy[mask], axis=1))) 
 
     except ZeroDivisionError:
         pass
     
-    dz = dz + beam_center[1]
+    dz = (dz + beam_center[1])/np.cos(tilting_angle)
     dy = dy + beam_center[0]
 
     diffracted_information = np.stack((dx, dy, dz), axis=1)
