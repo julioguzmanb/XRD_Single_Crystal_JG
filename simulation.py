@@ -24,7 +24,7 @@ def Ewald_Construction(phase, rotx, roty, rotz, wavelength, E_bandwidth, smalles
 
     plot.plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth)
 
-def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz", binning = (1,1)):
+def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz", binning = (1,1), add_guidelines = False, guide_hkls = None):
 
     #Creating detector instance
     detector = utils.Detector(detector_type = detector, sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
@@ -75,7 +75,7 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
 
     if len(hkls) > 0:
         plt.rcParams.update({'font.size': 14})
-        fig_size = (7*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
+        fig_size = (7*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 8*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
         plt.figure(figsize = (fig_size[0], fig_size[1]))
         plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000,data["wavelength"], data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
         
@@ -84,10 +84,11 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         else:
             plot.plot_detector(data)
         
+        if add_guidelines == True and guide_hkls is not None:
+            plot.plot_guidelines(guide_hkls, lattice_structure, detector, wavelength)
+        
     else:
         print("No (hkl) reflections seen in the detector!!")
-
-
     
 def parameter_change_mapping(phase, selected_parameter, initial_param_value, final_param_value, step, hkl, detector, sample_detector_distance, wavelength, E_bandwidth, tilting_angle = 0, rotx = 0, rotz = 0, margin = 0, beam_center = (0,0), binning = (1,1)):
     
@@ -153,7 +154,6 @@ def parameter_change_mapping(phase, selected_parameter, initial_param_value, fin
         plt.tight_layout()
         plt.grid()
         plt.show()
-        #plt.gca().invert_xaxis()
 
         #plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000, wavelength*1e10, phase, rotx, rotz))
 
@@ -186,7 +186,6 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
         lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)        
     elif phase == "Hexagonal":
         lattice_structure = utils.Hexagonal_Lattice(initial_crystal_orientation = initial_crystal_orientation)
-
 
     for rotx in rots_x:
         for rotz in rots_z:
@@ -257,10 +256,7 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
         else:
             pass
 
-
-
-
-def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz", binning = (1,1)):
+def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz", binning = (1,1), hkls = None):
 
     if phase == "Monoclinic":
         lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
@@ -269,7 +265,8 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
     
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
-    hkls = utils.create_possible_reflections(phase, smallest_number, largest_number)
+    if hkls == None:
+        hkls = utils.create_possible_reflections(phase, smallest_number, largest_number)
 
     rots = np.linspace(0, 360, int(abs((360)/angular_step)) + 1) 
 
@@ -327,6 +324,37 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
     plt.tight_layout()
     plt.show()
 
+
+def powder_sample(phase, detector, sample_detector_distance, wavelength, tilting_angle = 0, margin = 0, beam_center = (0,0), binning = (1,1), hkls = None):
+
+    if phase == "Monoclinic":
+        lattice_structure = utils.Monoclinic_Lattice()
+    elif phase == "Hexagonal":
+        lattice_structure = utils.Hexagonal_Lattice()
+    
+    detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
+
+
+    fig_size = (7*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7.7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
+    plt.figure(figsize = (fig_size[0], fig_size[1]))
+
+
+    plt.rcParams.update({'font.size': 15})
+    plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000, round(wavelength*1e10,4), phase))
+
+    plt.grid()
+    plt.ion()
+    plt.xlim(abs(detector.Max_Detectable_Y()/detector.pixel_size[0]), abs(detector.Min_Detectable_Y()/detector.pixel_size[0]))
+    plt.xlabel("y-direction [pixel]",fontsize = 16)
+    plt.ylim(detector.Min_Detectable_Z()/detector.pixel_size[1], detector.Max_Detectable_Z()/detector.pixel_size[1])
+    plt.ylabel("z-direction [pixel]",fontsize = 16)
+
+    plot.plot_guidelines(hkls, lattice_structure, detector, wavelength)
+
+    plt.scatter(beam_center[0], beam_center[1], label = "Beam Center", marker='x', color='black', s = 100)
+
+    plt.tight_layout()
+    plt.show()
 
 
 def mapping(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, smallest_number = -6, largest_number = 6, tilting_angle = 0, plot_singles = False, plot_doubles = False, plot_triples = False, plot_fourths = False, plot_more_than_four = False, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz"):
