@@ -200,7 +200,8 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     def distort_circle(y, z, detector):
         tilting_angle = np.radians(detector.tilting_angle)
         pixel_size = detector.pixel_size
-        beam_center = np.array([-detector.beam_center[0] * pixel_size[0], detector.beam_center[1] * pixel_size[1]]) # In meters
+        #beam_center = np.array([-detector.beam_center[0] * pixel_size[0], detector.beam_center[1] * pixel_size[1]]) # In meters
+        beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.Max_Detectable_Z() - detector.beam_center[1]*detector.pixel_size[1]) #This is to make the (0,0) the upper left corner
 
         # Convert pixel positions to meters
         y_m = y * (-pixel_size[0])
@@ -217,7 +218,8 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
 
     # Convert Y and Z back to pixels
     Y = Y / (-detector.pixel_size[0])
-    Z = Z / detector.pixel_size[1]
+    #Z = Z / detector.pixel_size[1]
+    Z = (detector.Max_Detectable_Z() - Z) / detector.pixel_size[1] #This is to make the (0,0) the upper left corner
 
     # Plot all distorted circles
     if len(hkls) == 1:
