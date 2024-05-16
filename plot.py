@@ -162,6 +162,7 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     - None
       Displays the diffraction circle guidelines on the detector plot.
     """
+
     # Calculate two theta angles
     two_theta = utils.calculate_two_theta(hkl = hkls, reciprocal_lattice=lattice_structure.reciprocal_lattice, wavelength=wavelength)
 
@@ -203,6 +204,19 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
 
 
 def plot_guidelines(hkls, lattice_structure, detector, wavelength):
+    """
+    Plot diffraction circle guidelines on the detector.
+
+    Parameters:
+    - hkls (numpy.ndarray): Array of Miller indices (hkl) for the diffraction circles.
+    - lattice_structure (Lattice_Structure): Object representing the crystal lattice structure.
+    - detector (Detector): Object representing the detector.
+    - wavelength (float): Wavelength of incident X-ray radiation.
+
+    Returns:
+    - None
+      Displays the diffraction circle guidelines on the detector plot.
+    """
 
     hkls = np.array(hkls)
 
@@ -216,6 +230,18 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     z = np.outer(r, np.sin(theta)) / detector.pixel_size[1]
 
     def distort_circle(y, z, detector):
+        """
+        Distort circle positions based on detector tilt.
+
+        Parameters:
+        - y (numpy.ndarray): Y-coordinates of circle positions.
+        - z (numpy.ndarray): Z-coordinates of circle positions.
+        - detector (Detector): Object representing the detector.
+
+        Returns:
+        - Y (numpy.ndarray): Distorted Y-coordinates of circle positions.
+        - Z (numpy.ndarray): Distorted Z-coordinates of circle positions.
+        """
         tilting_angle = np.radians(detector.tilting_angle)
         pixel_size = detector.pixel_size
 
@@ -326,4 +352,58 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     fig.show()
 """
 
+"""
+def plot_guidelines(hkls, lattice_structure, detector, wavelength):
+
+    Plot diffraction circle guidelines on the detector.
+
+    Parameters:
+    - hkls (numpy.ndarray): Array of Miller indices (hkl) for the diffraction circles.
+    - lattice_structure (Lattice_Structure): Object representing the crystal lattice structure.
+    - detector (Detector): Object representing the detector.
+    - wavelength (float): Wavelength of incident X-ray radiation.
+
+    Returns:
+    - None
+      Displays the diffraction circle guidelines on the detector plot.
+
+    # Calculate two theta angles
+    two_theta = utils.calculate_two_theta(hkl = hkls, reciprocal_lattice=lattice_structure.reciprocal_lattice, wavelength=wavelength)
+
+    # Calculate distances from sample to detector
+    r = detector.sample_detector_distance*np.tan(np.radians(two_theta))
+
+    # Generate angles
+    theta = np.linspace(0, 2*np.pi, 100)
+
+    # Calculate y and z coordinates for a circle
+    y = r * np.cos(theta)/(-detector.pixel_size[0])
+    z = r * np.sin(theta)/(detector.pixel_size[1])
+
+    # Function to distort circle based on detector parameters
+    def distort_circle(y,z, detector):
+        tilting_angle = np.radians(detector.tilting_angle)
+
+        # Convert y and z coordinates to meters
+        y = y*(-detector.pixel_size[0])
+        z = z*(detector.pixel_size[1])
+
+        # Calculate beam center in meters
+        beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1]) #In meters
+
+        # Apply distortion to y and z coordinates
+        Z = (z + beam_center[1])/(z*np.sin(tilting_angle)/detector.sample_detector_distance + np.cos(tilting_angle))
+        Y = ((detector.sample_detector_distance - beam_center[1]*np.tan(tilting_angle))/(detector.sample_detector_distance + z*np.tan(tilting_angle)))*y + beam_center[0]
+        return Y,Z
+    
+    # Apply distortion to circle coordinates
+    Y,Z = distort_circle(y,z, detector)
+
+    # Scale back y and z coordinates
+    Y = Y/(-detector.pixel_size[0])
+    Z = Z/(detector.pixel_size[1])
+
+    # Plot distorted circle as guidelines
+    plt.plot(Y, Z, "--",color = "black", linewidth = 2)
+"""
 
