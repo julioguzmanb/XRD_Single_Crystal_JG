@@ -7,34 +7,18 @@ import XRD_Single_Crystal_JG.utils as utils
 
 def Colorize(vector, vmin=None, vmax=None, ax=None, cmap=plt.cm.jet):
     """
-    Function for redoing the color of the plots. The main idea is to declare a list, 
-    transform it into a vector, and then use its values to create the cmap to color the plots.
+    Colorize plotted data based on a vector of values.
 
     Parameters:
-    ----------
-    vector: list or tuple
-        List or tuple with the indices of what is to be plotted.
-    
-    Optional:
-    ---------
-    vmin: Int or Float
-        Default = None
-        It sets the minimum index value for the cmap.
-    vmax: Int or Float
-        Default = None
-        It sets the maximum index value for the cmap.
-    ax: Int or Float
-        Default = None
-        It helps identifying the plot to be colorized.
-    cmap: matplotlib.pyplot color set.
-        Default = plt.cm.jet
-        It selects the specific set of colors to be used.
+    vector (numpy.ndarray): Array of values to be colorized.
+    vmin (float, optional): Minimum value for normalization. Defaults to None.
+    vmax (float, optional): Maximum value for normalization. Defaults to None.
+    ax (matplotlib.axes.Axes, optional): Axes object to apply colorization. Defaults to None.
+    cmap (matplotlib.colors.Colormap, optional): Colormap to use for colorization. Defaults to plt.cm.jet.
 
     Returns:
-    ---------
-    Nothing
+    None
     """
-
     vector = np.asarray(vector)
     # get plot
     if ax is None:
@@ -51,7 +35,19 @@ def Colorize(vector, vmin=None, vmax=None, ax=None, cmap=plt.cm.jet):
 
 
 def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
+    """
+    Plot the reciprocal space and Ewald construction.
 
+    Parameters:
+    - Q_hkls (numpy.ndarray): Array of shape (N, 3) containing the scattering vectors.
+    - hkls (numpy.ndarray): Array of shape (N, 3) containing the Miller indices for each reflection.
+    - wavelength (float): Wavelength of the incident X-ray beam in meters.
+    - E_bandwidth (float): Energy bandwidth of the X-ray beam in percentage.
+
+    Returns:
+    - None
+      Displays the 3D plot.
+    """
     wavelength = wavelength*1e10
 
     ewald_sphere = utils.Ewald_Sphere(wavelength, E_bandwidth)
@@ -119,19 +115,20 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
 
 
 def plot_detector(data, colorize = False):
+    """
+    Plot the detector layout.
+
+    Parameters:
+    - data (dict): Dictionary containing detector information.
+                   Requires keys: "detector", "y_coordinate", "z_coordinate", "hkls".
+    - colorize (bool): If True, colorizes the points on the detector plot based on the Miller indices.
+                       Default is False.
+
+    Returns:
+    - None
+      Displays the detector plot.
+    """
     detector = data["detector"]
-    #fig_size = (7*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 7*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
-    #plt.figure(figsize = (fig_size[0], fig_size[1]))
-
-    #plt.rcParams.update({'font.size': 14})
-    #fig_size_ratio = abs(detector.Min_Detectable_Y())/abs(detector.Max_Detectable_Z())
-    #plt.gca().set_aspect(fig_size_ratio, adjustable='box')
-
-    #a_x, a_y, a_z = np.round(data["crystal"]["lattice_params"][0], 3)
-    #b_x, b_y, b_z = np.round(data["crystal"]["lattice_params"][1], 3)
-    #c_x, c_y, c_z = np.round(data["crystal"]["lattice_params"][2], 3)
-
-    #plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000,data["wavelength"], data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
     
     if colorize == True:
         [plt.scatter(y_val, z_val, label=label) for y_val, z_val, label in zip(data["y_coordinate"], data["z_coordinate"], data["hkls"])]
@@ -152,35 +149,56 @@ def plot_detector(data, colorize = False):
     plt.show()
     
 def plot_guidelines(hkls, lattice_structure, detector, wavelength):
+    """
+    Plot diffraction circle guidelines on the detector.
 
+    Parameters:
+    - hkls (numpy.ndarray): Array of Miller indices (hkl) for the diffraction circles.
+    - lattice_structure (Lattice_Structure): Object representing the crystal lattice structure.
+    - detector (Detector): Object representing the detector.
+    - wavelength (float): Wavelength of incident X-ray radiation.
+
+    Returns:
+    - None
+      Displays the diffraction circle guidelines on the detector plot.
+    """
+    # Calculate two theta angles
     two_theta = utils.calculate_two_theta(hkl = hkls, reciprocal_lattice=lattice_structure.reciprocal_lattice, wavelength=wavelength)
+
+    # Calculate distances from sample to detector
     r = detector.sample_detector_distance*np.tan(np.radians(two_theta))
 
+    # Generate angles
     theta = np.linspace(0, 2*np.pi, 100)
 
+    # Calculate y and z coordinates for a circle
     y = r * np.cos(theta)/(-detector.pixel_size[0])
     z = r * np.sin(theta)/(detector.pixel_size[1])
 
+    # Function to distort circle based on detector parameters
     def distort_circle(y,z, detector):
         tilting_angle = np.radians(detector.tilting_angle)
 
+        # Convert y and z coordinates to meters
         y = y*(-detector.pixel_size[0])
         z = z*(detector.pixel_size[1])
 
+        # Calculate beam center in meters
         beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1]) #In meters
 
+        # Apply distortion to y and z coordinates
         Z = (z + beam_center[1])/(z*np.sin(tilting_angle)/detector.sample_detector_distance + np.cos(tilting_angle))
-
         Y = ((detector.sample_detector_distance - beam_center[1]*np.tan(tilting_angle))/(detector.sample_detector_distance + z*np.tan(tilting_angle)))*y + beam_center[0]
         return Y,Z
     
+    # Apply distortion to circle coordinates
     Y,Z = distort_circle(y,z, detector)
+
+    # Scale back y and z coordinates
     Y = Y/(-detector.pixel_size[0])
     Z = Z/(detector.pixel_size[1])
 
-    y = y + detector.beam_center[0]
-    z = z + detector.beam_center[1]
-
+    # Plot distorted circle as guidelines
     plt.plot(Y, Z, "--",color = "black", linewidth = 2)
 
 
@@ -200,7 +218,7 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     def distort_circle(y, z, detector):
         tilting_angle = np.radians(detector.tilting_angle)
         pixel_size = detector.pixel_size
-        #beam_center = np.array([-detector.beam_center[0] * pixel_size[0], detector.beam_center[1] * pixel_size[1]]) # In meters
+
         beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.Max_Detectable_Z() - detector.beam_center[1]*detector.pixel_size[1]) #This is to make the (0,0) the upper left corner
 
         # Convert pixel positions to meters
@@ -218,7 +236,6 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
 
     # Convert Y and Z back to pixels
     Y = Y / (-detector.pixel_size[0])
-    #Z = Z / detector.pixel_size[1]
     Z = (detector.Max_Detectable_Z() - Z) / detector.pixel_size[1] #This is to make the (0,0) the upper left corner
 
     # Plot all distorted circles
