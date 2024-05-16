@@ -6,22 +6,51 @@ import pyFAI.detectors
 
 
 def energy_to_wavelength(energy):
-    """Energy in eV. Output will be in m """
-    h = 4.135667696e-15 #eV-s
-    c = 299792458 #m/s
-    wavelength = h*c/energy # m
+    """
+    Convert energy (in electron volts) to wavelength (in meters).
+
+    Parameters:
+    energy (float): The energy in electron volts (eV).
+
+    Returns:
+    float: The corresponding wavelength in meters (m).
+    """
+    h = 4.135667696e-15  # Planck's constant in eV·s
+    c = 299792458  # Speed of light in m/s
+    wavelength = h * c / energy  # Calculate wavelength in meters
 
     return wavelength
 
 def wavelength_to_energy(wavelength):
-    """wavelength in m. Output will be in eV """
-    h = 4.135667696e-15 #eV-s
-    c = 299792458 #m/s
-    energy = h*c/wavelength # eV
+    """
+    Convert wavelength (in meters) to energy (in electron volts).
+
+    Parameters:
+    wavelength (float): The wavelength in meters (m).
+
+    Returns:
+    float: The corresponding energy in electron volts (eV).
+    """
+    h = 4.135667696e-15  # Planck's constant in eV·s
+    c = 299792458  # Speed of light in m/s
+    energy = h * c / wavelength  # Calculate energy in electron volts
 
     return energy
 
-def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0, rotation_order = "xyz"):
+def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0, rotation_order="xyz"):
+    """
+    Apply a series of rotations to an initial matrix using specified Euler angles and rotation order.
+
+    Parameters:
+    initial_matrix (numpy.ndarray): The matrix to be rotated.
+    rotx (float): Rotation angle around the x-axis in degrees. Default is 0.
+    roty (float): Rotation angle around the y-axis in degrees. Default is 0.
+    rotz (float): Rotation angle around the z-axis in degrees. Default is 0.
+    rotation_order (str): The order of rotations, specified as a string of axes (e.g., "xyz", "zyx"). Default is "xyz".
+
+    Returns:
+    numpy.ndarray: The rotated matrix.
+    """
     rotation_quaternion_x = R.from_euler('x', -rotx, degrees=True).as_quat()
     rotation_quaternion_y = R.from_euler('y', -roty, degrees=True).as_quat()
     rotation_quaternion_z = R.from_euler('z', -rotz, degrees=True).as_quat()
@@ -51,6 +80,16 @@ def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0, rotation_order = "xyz
     return rotated_matrix
 
 def allowed_reflections(phase, hkl):
+    """
+    Determine if a given set of Miller indices (hkl) is allowed for a specific crystal phase.
+
+    Parameters:
+    phase (str): The crystal phase, either "Hexagonal" or "Monoclinic".
+    hkl (tuple of int): A tuple containing the Miller indices (h, k, l).
+
+    Returns:
+    bool: True if the reflection is allowed for the specified phase, False otherwise.
+    """
     h, k, l = hkl
     
     if (h == k == l == 0):
@@ -108,6 +147,17 @@ def allowed_reflections(phase, hkl):
     return False
 
 def create_possible_reflections(phase, smallest_number, largest_number):
+    """
+    Generate all possible reflections within a specified range for a given crystal phase.
+
+    Parameters:
+    phase (str): The crystal phase, e.g., "Hexagonal" or "Monoclinic".
+    smallest_number (int): The smallest Miller index to consider.
+    largest_number (int): The largest Miller index to consider.
+
+    Returns:
+    numpy.ndarray: An array of allowed (h, k, l) reflections.
+    """
     rango_hkl = np.arange(smallest_number, largest_number + 1)
     h, k, l = np.meshgrid(rango_hkl, rango_hkl, rango_hkl)
     
@@ -122,31 +172,80 @@ def create_possible_reflections(phase, smallest_number, largest_number):
     return combinaciones_hkl
 
 def cal_reciprocal_lattice(lattice):
+    """
+    Calculate the reciprocal lattice vectors from the direct lattice vectors.
 
-    reciprocal_lattice = np.linalg.inv(lattice).T*2*np.pi
+    Parameters:
+    lattice (numpy.ndarray): A 3x3 matrix representing the direct lattice vectors.
+
+    Returns:
+    numpy.ndarray: A 3x3 matrix representing the reciprocal lattice vectors.
+    """
+    reciprocal_lattice = np.linalg.inv(lattice).T * 2 * np.pi
 
     return reciprocal_lattice
 
 def calculate_Q_hkl(hkl, reciprocal_lattice):
+    """
+    Calculate the Q vector for given Miller indices and reciprocal lattice.
 
+    Parameters:
+    hkl (numpy.ndarray): An array of Miller indices (h, k, l).
+    reciprocal_lattice (numpy.ndarray): A 3x3 matrix representing the reciprocal lattice vectors.
+
+    Returns:
+    numpy.ndarray: The Q vector corresponding to the given Miller indices.
+    """
     Q_hkl = np.dot(hkl, reciprocal_lattice)
 
     return Q_hkl
 
 def calculate_dspacing(hkl, reciprocal_lattice):
-    Q_hkl = np.linalg.norm(calculate_Q_hkl(hkl, reciprocal_lattice), axis = 1)
+    """
+    Calculate the d-spacing for given Miller indices and reciprocal lattice.
+
+    Parameters:
+    hkl (numpy.ndarray): An array of Miller indices (h, k, l).
+    reciprocal_lattice (numpy.ndarray): A 3x3 matrix representing the reciprocal lattice vectors.
+
+    Returns:
+    numpy.ndarray: The d-spacing values for the given Miller indices.
+    """
+    Q_hkl = np.linalg.norm(calculate_Q_hkl(hkl, reciprocal_lattice), axis=1)
     dspacing_values = 2*np.pi/Q_hkl
     return dspacing_values
 
 def calculate_two_theta(hkl, reciprocal_lattice, wavelength):
-    wavelength = wavelength*1e10
-    Q_hkl = np.linalg.norm(calculate_Q_hkl(hkl, reciprocal_lattice), axis = 1)
-    two_thetas = np.rad2deg(2*np.arcsin(wavelength*Q_hkl/(4*np.pi))) #in Degrees
+    """
+    Calculate the two-theta angles for given Miller indices, reciprocal lattice, and wavelength.
+
+    Parameters:
+    hkl (numpy.ndarray): An array of Miller indices (h, k, l).
+    reciprocal_lattice (numpy.ndarray): A 3x3 matrix representing the reciprocal lattice vectors.
+    wavelength (float): The wavelength of the incident X-ray in meters.
+
+    Returns:
+    numpy.ndarray: The two-theta angles in degrees for the given Miller indices.
+    """
+    wavelength = wavelength * 1e10  # Convert wavelength to Angstroms
+    Q_hkl = np.linalg.norm(calculate_Q_hkl(hkl, reciprocal_lattice), axis=1)
+    two_thetas = np.rad2deg(2 * np.arcsin(wavelength * Q_hkl / (4 * np.pi)))  # In degrees
+
     return two_thetas
 
 def check_Bragg_condition(Q_hkls, wavelength, E_bandwidth):
+    """
+    Check if given Q vectors satisfy the Bragg condition for a given wavelength and energy bandwidth.
 
-    wavelength = wavelength*1e10 #Going from m to Å
+    Parameters:
+    Q_hkls (numpy.ndarray): An array of Q vectors corresponding to the Miller indices.
+    wavelength (float): The wavelength of the incident X-ray in meters.
+    E_bandwidth (float): The energy bandwidth of the incident X-ray.
+
+    Returns:
+    numpy.ndarray: A boolean array indicating which Q vectors satisfy the Bragg condition.
+    """
+    wavelength = wavelength * 1e10  # Convert wavelength from meters to Angstroms
 
     ewald_sphere = Ewald_Sphere(wavelength, E_bandwidth)
 
@@ -160,9 +259,23 @@ def check_Bragg_condition(Q_hkls, wavelength, E_bandwidth):
     return in_bragg_condition
 
 def diffraction_direction(Q_hkls, detector, wavelength):
-    #sample_detector_distance is in meters. So dx, dy, dz will be too.
-    
-    #beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1])
+    """
+    Calculate the diffraction direction for given Q vectors and a detector setup.
+
+    Parameters:
+    Q_hkls (numpy.ndarray): An array of Q vectors corresponding to the Miller indices.
+    detector (object): An object representing the detector, with attributes:
+                       - beam_center: A tuple (x, y) representing the beam center in pixel coordinates.
+                       - pixel_size: A tuple (pixel_size_x, pixel_size_y) representing the size of the detector pixels in meters.
+                       - tilting_angle: The tilting angle of the detector in degrees.
+                       - sample_detector_distance: The distance from the sample to the detector in meters.
+                       - Max_Detectable_Z: A method that returns the maximum detectable Z-coordinate on the detector in meters.
+    wavelength (float): The wavelength of the incident X-ray in meters.
+
+    Returns:
+    numpy.ndarray: An array of shape (N, 3) containing the diffraction directions (dx, dy, dz) in meters for each Q vector.
+    """
+
     beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.Max_Detectable_Z() - detector.beam_center[1]*detector.pixel_size[1]) #This is to make the (0,0) the upper left corner
 
     
@@ -209,19 +322,56 @@ def diffraction_direction(Q_hkls, detector, wavelength):
     return diffracted_information #These in meters
 
 def diffraction_in_detector(diffracted_information, detector):
-    #Detector must be an object
-    mask = (diffracted_information[:,0] > 0) & (diffracted_information[:,1] <= detector.Max_Detectable_Y()) & (diffracted_information[:,1] >= detector.Min_Detectable_Y()) & (diffracted_information[:,2] <= detector.Max_Detectable_Z()) & (diffracted_information[:,2] >= detector.Min_Detectable_Z())
+    """
+    Determine if the diffracted directions fall within the detector's detectable area.
+
+    Parameters:
+    diffracted_information (numpy.ndarray): An array of shape (N, 3) containing the diffraction directions (dx, dy, dz) in meters.
+    detector (object): An object representing the detector, with methods:
+                       - Max_Detectable_Y(): Returns the maximum detectable Y-coordinate on the detector in meters.
+                       - Min_Detectable_Y(): Returns the minimum detectable Y-coordinate on the detector in meters.
+                       - Max_Detectable_Z(): Returns the maximum detectable Z-coordinate on the detector in meters.
+                       - Min_Detectable_Z(): Returns the minimum detectable Z-coordinate on the detector in meters.
+
+    Returns:
+    numpy.ndarray: A boolean array indicating whether each diffracted direction falls within the detector's detectable area.
+    """
+    mask = (
+        (diffracted_information[:,0] > 0) & 
+        (diffracted_information[:,1] <= detector.Max_Detectable_Y()) & 
+        (diffracted_information[:,1] >= detector.Min_Detectable_Y()) & 
+        (diffracted_information[:,2] <= detector.Max_Detectable_Z()) & 
+        (diffracted_information[:,2] >= detector.Min_Detectable_Z())
+        )
     return mask
 
 def single_crystal_orientation(phase, wavelength, detector, sample_detector_distance, beam_center,
                                hkls, rotations, y_coordinates, z_coordinates,
-                               crystal_orient_guess, tilting_angle = 0, rotation_order = "xyz", binning = (1,1)):
+                               crystal_orient_guess, tilting_angle=0, rotation_order="xyz", binning=(1,1)):
+    """
+    Retrieve the single crystal orientation given 3 Bragg reflections.
 
-    #This long function is to be used when trying to retreive single crystal orientation given 3 Braggs.
+    Parameters:
+    phase (str): The phase of the crystal, either "Hexagonal" or "Monoclinic".
+    wavelength (float): The wavelength of the incident X-ray in meters.
+    detector (str): The type of the detector.
+    sample_detector_distance (float): The distance from the sample to the detector in meters.
+    beam_center (tuple): The beam center coordinates in pixel coordinates.
+    hkls (list of lists): A list of Miller indices.
+    rotations (list of lists): A list of rotations applied to the crystal in degrees.
+    y_coordinates (list of floats): A list of y coordinates of the detected spots in pixels.
+    z_coordinates (list of floats): A list of z coordinates of the detected spots in pixels.
+    crystal_orient_guess (list of floats): An initial guess for the crystal orientation matrix.
+    tilting_angle (float, optional): The tilting angle of the detector in degrees. Default is 0.
+    rotation_order (str, optional): The order of rotations. Default is "xyz".
+    binning (tuple, optional): The binning of the detector pixels. Default is (1, 1).
+
+    Returns:
+    numpy.ndarray: A 3x3 matrix representing the crystal orientation.
+    """
 
     detector = Detector(detector_type = detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, beam_center = beam_center, binning = binning)
 
-    #beam_center = (beam_center[0]*(-detector.pixel_size[0]),beam_center[1]*(detector.pixel_size[1])) #in m
     beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.Max_Detectable_Z() - detector.beam_center[1]*detector.pixel_size[1]) #This is to make the (0,0) the upper left corner
 
     y_distances = np.array(y_coordinates)*(-detector.pixel_size[0]) #in m
@@ -324,6 +474,20 @@ def single_crystal_orientation(phase, wavelength, detector, sample_detector_dist
 
 class Lattice_Structure:
     def __init__(self, a, b, c, alpha, beta, gamma, initial_crystal_orientation, Vanadium_fractional_position, Oxygen_fractional_position):
+        """
+        Initialize a lattice structure with its parameters and initial crystal orientation.
+
+        Parameters:
+        a (float): Length of lattice vector a.
+        b (float): Length of lattice vector b.
+        c (float): Length of lattice vector c.
+        alpha (float): Angle between lattice vectors b and c in degrees.
+        beta (float): Angle between lattice vectors a and c in degrees.
+        gamma (float): Angle between lattice vectors a and b in degrees.
+        initial_crystal_orientation (numpy.ndarray): Initial crystal orientation matrix.
+        Vanadium_fractional_position (numpy.ndarray): Fractional coordinates of Vanadium atoms.
+        Oxygen_fractional_position (numpy.ndarray): Fractional coordinates of Oxygen atoms.
+        """
         self.a = a
         self.b = b
         self.c = c
@@ -336,23 +500,47 @@ class Lattice_Structure:
         self.crystal_orientation = initial_crystal_orientation
         self.reciprocal_lattice = cal_reciprocal_lattice(self.crystal_orientation)
 
-    def Apply_Rotation(self, rotx = 0, roty = 0, rotz = 0, rotation_order = "xyz"):
+    def Apply_Rotation(self, rotx=0, roty=0, rotz=0, rotation_order="xyz"):
+        """
+        Apply rotation to the crystal orientation matrix.
+
+        Parameters:
+        rotx (float): Rotation angle around the x-axis in degrees.
+        roty (float): Rotation angle around the y-axis in degrees.
+        rotz (float): Rotation angle around the z-axis in degrees.
+        rotation_order (str): Order of rotation, e.g., "xyz".
+
+        Returns:
+        None
+        """
         self.crystal_orientation = np.round(apply_rotation(self.initial_crystal_orientation, rotx, roty, rotz, rotation_order=rotation_order),5)
         self.reciprocal_lattice = cal_reciprocal_lattice(self.crystal_orientation)
     
-        #self.crystal_orientation = apply_rotation(self.crystal_orientation, rotx, roty, rotz)
-    
 class Hexagonal_Lattice(Lattice_Structure):
-    def __init__(self, a = None, b = None, c = None, alpha = None, beta = None, gamma = None, initial_crystal_orientation = None):
+    def __init__(self, a=None, b=None, c=None, alpha=None, beta=None, gamma=None, initial_crystal_orientation=None):
+        """
+        Initialize a hexagonal lattice structure with default or provided parameters.
+
+        Parameters:
+        a (float): Length of lattice vector a. Defaults to 4.9525.
+        b (float): Length of lattice vector b. Defaults to the same as a.
+        c (float): Length of lattice vector c. Defaults to 14.00093.
+        alpha (float): Angle between lattice vectors b and c in degrees. Defaults to 90.
+        beta (float): Angle between lattice vectors a and c in degrees. Defaults to 90.
+        gamma (float): Angle between lattice vectors a and b in degrees. Defaults to 120.
+        initial_crystal_orientation (numpy.ndarray): Initial crystal orientation matrix. Defaults to a predefined value.
+        """
 
         if a is None:
             a = 4.9525
+            #a = 4.954
         
         if b is None:
             b = a
 
         if c is None:
             c = 14.00093
+            #c = 14.01
         
         if alpha is None:
             alpha = 90
@@ -377,7 +565,19 @@ class Hexagonal_Lattice(Lattice_Structure):
         super().__init__(a, b, c, alpha, beta, gamma, initial_crystal_orientation, Vanadium_fractional_position, Oxygen_fractional_position)
         
 class Monoclinic_Lattice(Lattice_Structure):
-    def __init__(self, a = None, b = None, c = None, alpha = None, beta = None, gamma = None, initial_crystal_orientation = None):
+    def __init__(self, a=None, b=None, c=None, alpha=None, beta=None, gamma=None, initial_crystal_orientation=None):
+        """
+        Initialize a monoclinic lattice structure with default or provided parameters.
+
+        Parameters:
+        a (float): Length of lattice vector a. Defaults to 7.266.
+        b (float): Length of lattice vector b. Defaults to 5.0024.
+        c (float): Length of lattice vector c. Defaults to 5.5479.
+        alpha (float): Angle between lattice vectors b and c in degrees. Defaults to 90.
+        beta (float): Angle between lattice vectors a and c in degrees. Defaults to 96.760.
+        gamma (float): Angle between lattice vectors a and b in degrees. Defaults to 90.
+        initial_crystal_orientation (numpy.ndarray): Initial crystal orientation matrix. Defaults to a predefined value.
+        """
         
         if a is None:
             a = 7.266
@@ -422,28 +622,42 @@ class Monoclinic_Lattice(Lattice_Structure):
         super().__init__(a, b, c, alpha, beta, gamma, initial_crystal_orientation, Vanadium_fractional_position, Oxygen_fractional_position)
 
 class Detector:
-    def __init__(self, detector_type, sample_detector_distance = None, tilting_angle = 0, beam_center = (0,0), margin = 0, pixel_size = None, binning = (1,1)):
+    def __init__(self, detector_type, sample_detector_distance=None, tilting_angle=0, beam_center=(0, 0), margin=0, binning=(1, 1)):
+        """
+        Initialize a Detector instance.
 
-        #The beam_center = (0,0) corresponds to the lower center part of the detector. This is to be changed eventually...
+        Parameters:
+        detector_type (str): Type of the detector, e.g., "Rayonix", "Pilatus".
+        sample_detector_distance (float): Sample-detector distance in meters.
+        tilting_angle (float): Angle of tilting of the detector in degrees.
+        beam_center (tuple): Coordinates of the beam center on the detector in pixels.
+        margin (float): Margin percentage for adjusting detectable region.
+        pixel_size (tuple): Size of pixels in meters.
+        binning (tuple): Binning factors for the detector.
 
+        Returns:
+        None
+        """
+        # Store parameters
         self.detector_type = detector_type #I just want to make it accessible 
         self.beam_center = beam_center #In pixel number
         self.margin = margin
-        #self.pixel_size = pixel_size
         self.binning = binning
         self.tilting_angle = tilting_angle
 
+        # Convert tilting angle to radians
         tilting_angle = np.deg2rad(tilting_angle)
         
         try:
+            # Use pyFAI to get detector dimensions and pixel sizes
             det = pyFAI.detectors.detector_factory("RayonixmX170")
             self.height = (det.MAX_SHAPE[0])*(det.pixel1)
             self.width = (det.MAX_SHAPE[1])*(det.pixel2)
             self.pixel_size = (det.pixel1*binning[0], det.pixel2*binning[1])
 
         except NameError:
-            print("ok")
 
+            # Set dimensions and pixel size based on detector type
             if self.detector_type == "Rayonix":
                 self.height = 0.170 #m
                 self.width = 0.170 #m
@@ -454,47 +668,78 @@ class Detector:
                 self.width = 0.253 #m
                 self.pixel_size = (172e-6*binning[0], 172e-6*binning[1])
             
+            else:
+                print("Invalid Detector")
+            
             #elif self.detector_type == "Rigaku":
             #    self.height = 80
             #    self.width  = 80
             
-            else:
-                print("Invalid Detector")
         
         if self.detector_type == "Pilatus":
             self.height = 0.142 #m
             self.width = 0.253 #m
             self.pixel_size = (172e-6*binning[0], 172e-6*binning[1])
         
-        
+        # Set sample-detector distance if provided
         if sample_detector_distance is not None:
             self.sample_detector_distance = sample_detector_distance
         
         
     def Max_Detectable_Z(self):
-        max_dz = (1 - self.margin/100)*(self.height - self.beam_center[1])#*np.sin(np.pi/2 - self.tilting_angle)
+        """
+        Compute the maximum detectable Z-coordinate on the detector.
+
+        Returns:
+        float: Maximum Z-coordinate.
+        """
         max_dz = (1 - self.margin/100)*(self.height)#*np.sin(np.pi/2 - self.tilting_angle)
 
         return max_dz
     
     def Min_Detectable_Z(self):
-        min_dz = (-self.beam_center[1])*(1 - self.margin/100)
+        """
+        Compute the minimum detectable Z-coordinate on the detector.
+
+        Returns:
+        float: Minimum Z-coordinate.
+        """
         min_dz = (self.height)*(self.margin/100)
 
         return min_dz
     
     def Max_Detectable_Y(self):
-        max_dy = (1 - self.margin/100)*(self.width/2 - self.beam_center[0])
+        """
+        Compute the maximum detectable Y-coordinate on the detector.
+
+        Returns:
+        float: Maximum Y-coordinate.
+        """
         max_dy = -(self.width)*(self.margin/100)
         return max_dy
 
     def Min_Detectable_Y(self):
-        min_dy = (1 - self.margin/100)*(-self.width/2 - self.beam_center[0])
+        """
+        Compute the minimum detectable Y-coordinate on the detector.
+
+        Returns:
+        float: Minimum Y-coordinate.
+        """
         min_dy = -(self.width)*(1 - self.margin/100)
         return min_dy
         
 class Ewald_Sphere:
     def __init__(self, wavelength, E_bandwidth):
+        """
+        Initialize an Ewald Sphere instance.
+
+        Parameters:
+        wavelength (float): Wavelength of the incident radiation.
+        E_bandwidth (float): Energy bandwidth in percentage.
+
+        Returns:
+        None
+        """
         self.wavelength = wavelength
         self.E_bandwidth = E_bandwidth
         self.radius = 2*np.pi/wavelength
@@ -502,15 +747,39 @@ class Ewald_Sphere:
         self.radius_outer = self.radius*(1 + (E_bandwidth/2)/100)
 
     def Get_Radius(self):
+        """
+        Get the radius of the Ewald sphere.
+
+        Returns:
+        float: Radius of the Ewald sphere.
+        """
         return self.radius
 
     def Get_Inner_Radius(self):
+        """
+        Get the inner radius of the Ewald sphere.
+
+        Returns:
+        float: Inner radius of the Ewald sphere.
+        """
         return self.radius_inner
         
     def Get_Outer_Radius(self):
+        """
+        Get the outer radius of the Ewald sphere.
+
+        Returns:
+        float: Outer radius of the Ewald sphere.
+        """
         return self.radius_outer
 
     def Generate_Ewald_Sphere_Data(self):
+        """
+        Generate data points for visualizing the Ewald sphere.
+
+        Returns:
+        tuple: Arrays containing x, y, and z coordinates of points on the Ewald sphere.
+        """
         theta = np.linspace(0, 2 * np.pi, 100)
         phi = np.linspace(0, np.pi, 100)
         theta, phi = np.meshgrid(theta, phi)
@@ -522,7 +791,15 @@ class Ewald_Sphere:
         return x, y, z
 
     def Add_To_Existing_Plot(self, existing_fig):
+        """
+        Add the Ewald sphere to an existing plot.
 
+        Parameters:
+        existing_fig (plotly.graph_objs.Figure): Existing plotly figure.
+
+        Returns:
+        plotly.graph_objs.Figure: Figure with the Ewald sphere added.
+        """
         x, y, z = self.Generate_Ewald_Sphere_Data()
 
         sphere = go.Surface(
@@ -539,11 +816,30 @@ class Ewald_Sphere:
     
 class Atom:
     def __init__(self, symbol, atomic_structure_factor):
+        """
+        Initialize an Atom instance.
+
+        Parameters:
+        symbol (str): Symbol of the atom.
+        atomic_structure_factor (numpy.ndarray): Array containing pairs of distances and corresponding atomic structure factors.
+
+        Returns:
+        None
+        """
         self.Symbol = symbol
         self.Atomic_Structure_Factor = atomic_structure_factor
 
 class Vanadium(Atom):
     def __init__(self):
+        """
+        Initialize a Vanadium instance.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+        """
         symbol = "V"
         atomic_structure_factor = np.array([
             (0.00, 23.00),
@@ -578,6 +874,15 @@ class Vanadium(Atom):
 
 class Oxygen(Atom):
     def __init__(self):
+        """
+        Initialize an Oxygen instance.
+
+        Parameters:
+        None
+
+        Returns:
+        None
+        """
         symbol = "O"
         atomic_structure_factor = np.array([
             (0.00, 8.00),
@@ -596,29 +901,37 @@ class Oxygen(Atom):
         super().__init__(symbol, atomic_structure_factor)
 
 
-def calculate_two_theta_angle(phase, hkl, wavelength):
-
-    if phase == "Monoclinic":
-        lattice_structure = Monoclinic_Lattice()
-    
-    elif phase == "Hexagonal":
-        lattice_structure = Hexagonal_Lattice()
-
-
-    Q = calculate_Q_hkl(hkl, lattice_structure.reciprocal_lattice)
-
-    Q_norm = np.linalg.norm(Q)
-    two_theta = np.rad2deg(2*np.arcsin(Q_norm*wavelength/(4*np.pi)))
-
-    return two_theta
 
 def atomic_structure_factor(atomic_structure_factor_list, wavelength, two_theta):
+    """
+    Calculate the atomic structure factor for a given wavelength and scattering angle.
+
+    Parameters:
+    atomic_structure_factor_list (numpy.ndarray): A 2D array where the first column represents sin(theta)/lambda values 
+                                                  and the second column represents the corresponding atomic structure factors.
+    wavelength (float): The wavelength of the incident X-ray in meters.
+    two_theta (float): The scattering angle in degrees.
+
+    Returns:
+    float: The atomic structure factor corresponding to the given wavelength and two_theta.
+    """
     sin_theta_over_lambda = np.sin((np.pi/180)*two_theta/2)/wavelength
     dummy = np.argmin(np.abs(atomic_structure_factor_list[:,0] - sin_theta_over_lambda))
     atomic_structure_factor = atomic_structure_factor_list[dummy][1]
     return atomic_structure_factor
 
 def structure_factor_given_atom(atomic_factor, hkl, atomic_positions):
+    """
+    Calculate the structure factor for a given set of atomic positions and an atomic scattering factor.
+
+    Parameters:
+    atomic_factor (float): The atomic scattering factor for a particular atom.
+    hkl (list or numpy.ndarray): The Miller indices [h, k, l].
+    atomic_positions (list of lists or numpy.ndarray): A list of atomic positions in fractional coordinates.
+
+    Returns:
+    float: The structure factor for the given atomic positions and atomic scattering factor.
+    """
     dummy = []
     for atomic_position in atomic_positions:
         bla = atomic_factor*np.exp(2j*np.pi*np.dot(hkl, atomic_position))
@@ -628,6 +941,17 @@ def structure_factor_given_atom(atomic_factor, hkl, atomic_positions):
     return structure_factor_atom
 
 def calculate_angle_between_two_reflections(phase, hkl_1, hkl_2):
+    """
+    Calculate the angle between two reflections for a given crystal phase.
+
+    Parameters:
+    phase (str): The phase of the crystal, either "Hexagonal" or "Monoclinic".
+    hkl_1 (list or numpy.ndarray): The Miller indices [h, k, l] of the first reflection.
+    hkl_2 (list or numpy.ndarray): The Miller indices [h, k, l] of the second reflection.
+
+    Returns:
+    float: The angle between the two reflections in degrees.
+    """
 
     hkl_1 = np.array(hkl_1)
     hkl_2 = np.array(hkl_2)

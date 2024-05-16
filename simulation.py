@@ -6,6 +6,25 @@ import XRD_Single_Crystal_JG.plot as plot
 plt.ion()
 
 def Ewald_Construction(phase, rotx, roty, rotz, wavelength, E_bandwidth, smallest_number, largest_number, initial_crystal_orientation = None, rotation_order = "xyz"):
+    """
+    Conducts an Ewald construction for a single crystal X-ray diffraction experiment.
+
+    Parameters:
+    - phase (str): The crystal phase, either "Monoclinic" or "Hexagonal".
+    - rotx (float): Rotation angle around the x-axis in degrees.
+    - roty (float): Rotation angle around the y-axis in degrees.
+    - rotz (float): Rotation angle around the z-axis in degrees.
+    - wavelength (float): The X-ray wavelength in angstroms.
+    - E_bandwidth (float): The energy bandwidth of the X-ray source in percentage.
+    - smallest_number (int): The smallest Miller index to consider for reflections.
+    - largest_number (int): The largest Miller index to consider for reflections.
+    - initial_crystal_orientation (ndarray, optional): Initial crystal orientation matrix. Defaults to None.
+    - rotation_order (str, optional): The order of rotations applied. Defaults to "xyz".
+
+    Returns:
+    - None
+      Displays a plot of the reciprocal lattice points and the Ewald sphere.
+    """
 
     #Creating lattice structure
     if phase == "Monoclinic":
@@ -22,9 +41,37 @@ def Ewald_Construction(phase, rotx, roty, rotz, wavelength, E_bandwidth, smalles
     #Calculating the momentum transfer vectors
     Q_hkls = utils.calculate_Q_hkl(hkls, lattice_structure.reciprocal_lattice)
 
+    #Plotting reciprocal lattice and Ewald sphere
     plot.plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth)
 
 def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz", binning = (1,1), add_guidelines = False, guide_hkls = None):
+    """
+    Simulate X-ray diffraction pattern detection on a specified detector.
+
+    Parameters:
+    - phase (str): The crystal phase, either "Monoclinic" or "Hexagonal".
+    - rotx (float): Rotation angle around the x-axis in degrees.
+    - roty (float): Rotation angle around the y-axis in degrees.
+    - rotz (float): Rotation angle around the z-axis in degrees.
+    - detector (str): Type of detector, e.g., "Rayonix", "Pilatus", etc.
+    - sample_detector_distance (float): Distance from sample to detector in meters.
+    - wavelength (float): The X-ray wavelength in angstroms.
+    - E_bandwidth (float): The energy bandwidth of the X-ray source in percentage.
+    - smallest_number (int): The smallest Miller index to consider for reflections.
+    - largest_number (int): The largest Miller index to consider for reflections.
+    - tilting_angle (float, optional): Tilting angle of the detector in degrees. Defaults to 0.
+    - initial_crystal_orientation (ndarray, optional): Initial crystal orientation matrix. Defaults to None.
+    - margin (float, optional): Margin percentage for the detector. Defaults to 0.
+    - beam_center (tuple, optional): Coordinates of the beam center on the detector. Defaults to (0, 0).
+    - rotation_order (str, optional): The order of rotations applied. Defaults to "xyz".
+    - binning (tuple, optional): Binning factor for the detector in (x, y) dimensions. Defaults to (1, 1).
+    - add_guidelines (bool, optional): If True, adds diffraction guidelines to the plot. Defaults to False.
+    - guide_hkls (ndarray, optional): Miller indices to be used for diffraction guidelines. Defaults to None.
+
+    Returns:
+    - None
+      Displays a plot of the simulated X-ray diffraction pattern on the specified detector.
+    """
 
     #Creating detector instance
     detector = utils.Detector(detector_type = detector, sample_detector_distance = sample_detector_distance, tilting_angle = tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
@@ -59,7 +106,6 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
 
     ###Transforming into pixels
     dy = -diffracted_information[:,0]/detector.pixel_size[0]
-    #dz = diffracted_information[:,1]/detector.pixel_size[1]
     dz = (detector.Max_Detectable_Z()-diffracted_information[:,1])/detector.pixel_size[1] #This is to make the (0,0) the upper left corner
             
     #Creating the dictionnary for storing the data
@@ -80,7 +126,6 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         plt.figure(figsize = (fig_size[0], fig_size[1]))
         plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000,data["wavelength"], data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
         
-        
         if len(hkls) > 1:
             plot.plot_detector(data, colorize = True)
         else:
@@ -95,7 +140,31 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         print("No (hkl) reflections seen in the detector!!")
     
 def parameter_change_mapping(phase, selected_parameter, initial_param_value, final_param_value, step, hkl, detector, sample_detector_distance, wavelength, E_bandwidth, tilting_angle = 0, rotx = 0, rotz = 0, margin = 0, beam_center = (0,0), binning = (1,1)):
-    
+    """
+    Simulate the variation of X-ray diffraction pattern on a detector with changing crystal lattice parameter.
+
+    Parameters:
+    - phase (str): The crystal phase, either "Monoclinic" or "Hexagonal".
+    - selected_parameter (str): The lattice parameter to vary. Options are "a", "b", "c", "alpha", "beta", or "gamma".
+    - initial_param_value (float): The initial value of the selected lattice parameter.
+    - final_param_value (float): The final value of the selected lattice parameter.
+    - step (float): The step size for changing the lattice parameter.
+    - hkl (tuple): The Miller indices (h, k, l) for the reflection.
+    - detector (str): Type of detector, e.g., "Rayonix", "Pilatus", etc.
+    - sample_detector_distance (float): Distance from sample to detector in meters.
+    - wavelength (float): The X-ray wavelength in angstroms.
+    - E_bandwidth (float): The energy bandwidth of the X-ray source in percentage.
+    - tilting_angle (float, optional): Tilting angle of the detector in degrees. Defaults to 0.
+    - rotx (float, optional): Rotation angle around the x-axis in degrees. Defaults to 0.
+    - rotz (float, optional): Rotation angle around the z-axis in degrees. Defaults to 0.
+    - margin (float, optional): Margin percentage for the detector. Defaults to 0.
+    - beam_center (tuple, optional): Coordinates of the beam center on the detector. Defaults to (0, 0).
+    - binning (tuple, optional): Binning factor for the detector in (x, y) dimensions. Defaults to (1, 1).
+
+    Returns:
+    - None
+      Displays a plot of the simulated X-ray diffraction pattern for varying lattice parameter.
+    """
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
     number_of_steps = int(abs((initial_param_value - final_param_value)/step)) +1
@@ -135,7 +204,6 @@ def parameter_change_mapping(phase, selected_parameter, initial_param_value, fin
 
             if utils.diffraction_in_detector(diffracted_information, detector) == True: #calling diffraction in detector mask
                 dy = -diffracted_information[:,1:3][:,0]/detector.pixel_size[0]
-                #dz = diffracted_information[:,1:3][:,1]/detector.pixel_size[1]
                 dz = (detector.Max_Detectable_Z()-diffracted_information[:,1])/detector.pixel_size[1] #This is to make the (0,0) the upper left corner
 
                 data["dy"].append(dy)
@@ -160,8 +228,6 @@ def parameter_change_mapping(phase, selected_parameter, initial_param_value, fin
         plt.grid()
         plt.show()
 
-        #plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000, wavelength*1e10, phase, rotx, rotz))
-
         [plt.scatter(y_val, z_val, label=label, s = 10) for y_val, z_val, label in zip(data["dy"], data["dz"], data["param_value"])]
 
         if len(data["dy"]) > 1:
@@ -178,6 +244,35 @@ def parameter_change_mapping(phase, selected_parameter, initial_param_value, fin
         print("No (hkl) reflections seen in the detector!!")
 
 def tracking_specific_reflections(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, desired_reflections_list, tilting_angle = 0, margin = 0, beam_center = (0,0), savefig = False, fig_name = None, initial_crystal_orientation = None, rotation_order = "xyz", binning = (0,0)):
+    """
+    Track specific reflections in the reciprocal space while varying crystal rotations.
+
+    Parameters:
+    - phase (str): Crystal phase, either "Monoclinic" or "Hexagonal".
+    - detector (str): Type of detector.
+    - sample_detector_distance (float): Sample-to-detector distance in meters.
+    - wavelength (float): X-ray wavelength in meters.
+    - rot_x_start (float): Starting rotation angle around the x-axis in degrees.
+    - rot_x_end (float): Ending rotation angle around the x-axis in degrees.
+    - step_rot_x (float): Step size for rotation around the x-axis in degrees.
+    - rot_z_start (float): Starting rotation angle around the z-axis in degrees.
+    - rot_z_end (float): Ending rotation angle around the z-axis in degrees.
+    - step_rot_z (float): Step size for rotation around the z-axis in degrees.
+    - E_bandwidth (float): Energy bandwidth in percentage.
+    - desired_reflections_list (list): List of desired reflections in the form [(h, k, l), ...].
+    - tilting_angle (float, optional): Sample tilting angle in degrees. Defaults to 0.
+    - margin (float, optional): Margin for the detector in pixels. Defaults to 0.
+    - beam_center (tuple, optional): Beam center coordinates (y, z) in pixels. Defaults to (0, 0).
+    - savefig (bool, optional): Whether to save the generated figure. Defaults to False.
+    - fig_name (str, optional): Name of the saved figure file. Defaults to None.
+    - initial_crystal_orientation (tuple, optional): Initial crystal orientation angles (rotx, roty, rotz) in degrees. Defaults to None.
+    - rotation_order (str, optional): Order of rotations. Defaults to "xyz".
+    - binning (tuple, optional): Binning factor for the detector (y, z). Defaults to (0, 0).
+
+    Returns:
+    - None
+    Displays the tracking of specific reflections on the reciprocal space while varying crystal rotations.
+    """
 
     detector = utils.Detector(detector_type = detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center, binning = binning)
 
@@ -263,7 +358,30 @@ def tracking_specific_reflections(phase, detector, sample_detector_distance, wav
             pass
 
 def polycrystalline_sample(phase, detector, angular_step, sample_detector_distance, wavelength, E_bandwidth, smallest_number, largest_number, tilting_angle = 0, margin = 0, initial_crystal_orientation = None, beam_center = (0,0), rotation_order = "xyz", binning = (1,1), hkls = None):
+    """
+    Simulate diffraction pattern for a polycrystalline sample.
 
+    Parameters:
+    - phase (str): Crystal phase, either "Monoclinic" or "Hexagonal".
+    - detector (str): Type of detector.
+    - angular_step (float): Angular step size for rotation in degrees.
+    - sample_detector_distance (float): Sample-to-detector distance in meters.
+    - wavelength (float): X-ray wavelength in meters.
+    - E_bandwidth (float): Energy bandwidth in percentage.
+    - smallest_number (int): Smallest Miller index number for reflections.
+    - largest_number (int): Largest Miller index number for reflections.
+    - tilting_angle (float, optional): Sample tilting angle in degrees. Defaults to 0.
+    - margin (float, optional): Margin for the detector in pixels. Defaults to 0.
+    - initial_crystal_orientation (tuple, optional): Initial crystal orientation angles (rotx, roty, rotz) in degrees. Defaults to None.
+    - beam_center (tuple, optional): Beam center coordinates (y, z) in pixels. Defaults to (0, 0).
+    - rotation_order (str, optional): Order of rotations. Defaults to "xyz".
+    - binning (tuple, optional): Binning factor for the detector (y, z). Defaults to (1, 1).
+    - hkls (list, optional): List of Miller indices of reflections. If None, automatically generated. Defaults to None.
+
+    Returns:
+    - None
+    Displays the simulated diffraction pattern for the polycrystalline sample.
+    """
     if phase == "Monoclinic":
         lattice_structure = utils.Monoclinic_Lattice(initial_crystal_orientation = initial_crystal_orientation)
     elif phase == "Hexagonal":
@@ -313,7 +431,6 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
 
                 #Transforming to pixels
                 dy = -diffracted_information[:,0]/detector.pixel_size[0]
-                #dz = diffracted_information[:,1]/detector.pixel_size[1]
                 dz = (detector.Max_Detectable_Z()-diffracted_information[:,1])/detector.pixel_size[1] #This is to make the (0,0) the upper left corner
 
                 dys.append(dy)
@@ -335,7 +452,24 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
 
 
 def powder_sample(phase, detector, sample_detector_distance, wavelength, tilting_angle = 0, margin = 0, beam_center = (0,0), binning = (1,1), hkls = None):
+    """
+    Simulate diffraction pattern for a powder sample.
 
+    Parameters:
+    - phase (str): Crystal phase, either "Monoclinic" or "Hexagonal".
+    - detector (str): Type of detector.
+    - sample_detector_distance (float): Sample-to-detector distance in meters.
+    - wavelength (float): X-ray wavelength in meters.
+    - tilting_angle (float, optional): Sample tilting angle in degrees. Defaults to 0.
+    - margin (float, optional): Margin for the detector in pixels. Defaults to 0.
+    - beam_center (tuple, optional): Beam center coordinates (y, z) in pixels. Defaults to (0, 0).
+    - binning (tuple, optional): Binning factor for the detector (y, z). Defaults to (1, 1).
+    - hkls (list, optional): List of Miller indices of reflections. If None, no guidelines are plotted. Defaults to None.
+
+    Returns:
+    - None
+    Displays the simulated diffraction pattern for the powder sample.
+    """
     if phase == "Monoclinic":
         lattice_structure = utils.Monoclinic_Lattice()
     elif phase == "Hexagonal":
@@ -368,6 +502,38 @@ def powder_sample(phase, detector, sample_detector_distance, wavelength, tilting
 
 
 def mapping(phase, detector, sample_detector_distance, wavelength, rot_x_start, rot_x_end, step_rot_x, rot_z_start, rot_z_end, step_rot_z, E_bandwidth, smallest_number = -6, largest_number = 6, tilting_angle = 0, plot_singles = False, plot_doubles = False, plot_triples = False, plot_fourths = False, plot_more_than_four = False, initial_crystal_orientation = None, margin = 0, beam_center = (0,0), rotation_order = "xyz"):
+    """
+    Perform mapping of reflections in reciprocal space and plot combinations of reflections.
+
+    Parameters:
+    - phase (str): Crystal phase, either "Monoclinic" or "Hexagonal".
+    - detector (str): Type of detector.
+    - sample_detector_distance (float): Sample-to-detector distance in meters.
+    - wavelength (float): X-ray wavelength in meters.
+    - rot_x_start (float): Starting rotation angle around x-axis in degrees.
+    - rot_x_end (float): Ending rotation angle around x-axis in degrees.
+    - step_rot_x (float): Step size for rotation around x-axis in degrees.
+    - rot_z_start (float): Starting rotation angle around z-axis in degrees.
+    - rot_z_end (float): Ending rotation angle around z-axis in degrees.
+    - step_rot_z (float): Step size for rotation around z-axis in degrees.
+    - E_bandwidth (float): Energy bandwidth in meters.
+    - smallest_number (int, optional): Smallest Miller index for reflections. Defaults to -6.
+    - largest_number (int, optional): Largest Miller index for reflections. Defaults to 6.
+    - tilting_angle (float, optional): Sample tilting angle in degrees. Defaults to 0.
+    - plot_singles (bool, optional): Plot reflections with one Miller index. Defaults to False.
+    - plot_doubles (bool, optional): Plot reflections with two Miller indices. Defaults to False.
+    - plot_triples (bool, optional): Plot reflections with three Miller indices. Defaults to False.
+    - plot_fourths (bool, optional): Plot reflections with four Miller indices. Defaults to False.
+    - plot_more_than_four (bool, optional): Plot reflections with more than four Miller indices. Defaults to False.
+    - initial_crystal_orientation (tuple, optional): Initial crystal orientation as (a, b, c, alpha, beta, gamma). Defaults to None.
+    - margin (float, optional): Margin for the detector in pixels. Defaults to 0.
+    - beam_center (tuple, optional): Beam center coordinates (y, z) in pixels. Defaults to (0, 0).
+    - rotation_order (str, optional): Rotation order for applying rotations. Defaults to "xyz".
+
+    Returns:
+    - None
+    Displays the plots of reflections in reciprocal space and combinations of reflections.
+    """
 
     detector = utils.Detector(detector_type=detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, margin = margin, beam_center = beam_center)
 
