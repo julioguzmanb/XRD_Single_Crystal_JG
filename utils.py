@@ -21,7 +21,6 @@ def wavelength_to_energy(wavelength):
 
     return energy
 
-
 def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0, rotation_order = "xyz"):
     rotation_quaternion_x = R.from_euler('x', -rotx, degrees=True).as_quat()
     rotation_quaternion_y = R.from_euler('y', -roty, degrees=True).as_quat()
@@ -50,7 +49,6 @@ def apply_rotation(initial_matrix, rotx=0, roty=0, rotz=0, rotation_order = "xyz
     rotated_matrix = np.round(np.dot(initial_matrix, total_rotation_matrix), 5)
     
     return rotated_matrix
-
 
 def allowed_reflections(phase, hkl):
     h, k, l = hkl
@@ -164,13 +162,13 @@ def check_Bragg_condition(Q_hkls, wavelength, E_bandwidth):
 def diffraction_direction(Q_hkls, detector, wavelength):
     #sample_detector_distance is in meters. So dx, dy, dz will be too.
     
-    beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1])
+    #beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1])
+    beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.Max_Detectable_Z() - detector.beam_center[1]*detector.pixel_size[1]) #This is to make the (0,0) the upper left corner
 
+    
     tilting_angle = np.radians(detector.tilting_angle)
 
     sample_detector_distance = detector.sample_detector_distance
-    #print(sample_detector_distance)
-    #print(beam_center)
 
     wavelength = wavelength*1e10 #Going from m to Å
 
@@ -208,56 +206,7 @@ def diffraction_direction(Q_hkls, detector, wavelength):
 
     diffracted_information = np.stack((dx, dy, dz), axis=1)
 
-    return diffracted_information
-
-def diffraction_direction(Q_hkls, detector, wavelength):
-    #sample_detector_distance is in meters. So dx, dy, dz will be too.
-    
-    beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1])
-
-    tilting_angle = np.radians(detector.tilting_angle)
-
-    sample_detector_distance = detector.sample_detector_distance
-    #print(sample_detector_distance)
-    #print(beam_center)
-
-    wavelength = wavelength*1e10 #Going from m to Å
-
-    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
-    kf_hkls = Q_hkls + ki 
-    
-    dx, dy, dz = np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls))
-
-    kfxy = kf_hkls.copy()
-    kfxy[:, 2] = 0  # Set the third component to zero for all rows
-
-    kfxz = kf_hkls.copy()
-    kfxz[:, 1] = 0  # Set the second component to zero for all rows
-
-    # Calculate dx
-    dx[kf_hkls[:, 0] > 0] = 1
-
-
-    try:
-        denominator = kfxz[:,0]
-        mask = denominator != 0
-        dz[mask] = ((kfxz[:, 2][mask]/denominator)*sample_detector_distance + beam_center[1])/((kfxz[:, 2][mask]/denominator)* np.sin(tilting_angle) + np.cos(tilting_angle))
-
-    except ZeroDivisionError:
-        pass
-
-    try:
-        denominator = kfxy[:,0]
-        mask = denominator != 0
-
-        dy[mask] = (kfxy[:, 1][mask]/denominator)*(sample_detector_distance - dz[mask] * np.sin(tilting_angle)) + beam_center[0]
-
-    except ZeroDivisionError:
-        pass
-
-    diffracted_information = np.stack((dx, dy, dz), axis=1)
-
-    return diffracted_information
+    return diffracted_information #These in meters
 
 def diffraction_in_detector(diffracted_information, detector):
     #Detector must be an object
@@ -272,10 +221,12 @@ def single_crystal_orientation(phase, wavelength, detector, sample_detector_dist
 
     detector = Detector(detector_type = detector, sample_detector_distance=sample_detector_distance, tilting_angle=tilting_angle, beam_center = beam_center, binning = binning)
 
-    beam_center = (beam_center[0]*(-detector.pixel_size[0]),beam_center[1]*(detector.pixel_size[1])) #in m
+    #beam_center = (beam_center[0]*(-detector.pixel_size[0]),beam_center[1]*(detector.pixel_size[1])) #in m
+    beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.Max_Detectable_Z() - detector.beam_center[1]*detector.pixel_size[1]) #This is to make the (0,0) the upper left corner
 
     y_distances = np.array(y_coordinates)*(-detector.pixel_size[0]) #in m
-    z_distances = np.array(z_coordinates)*(detector.pixel_size[1])  #in m
+    #z_distances = np.array(z_coordinates)*(detector.pixel_size[1])  #in m
+    z_distances = detector.Max_Detectable_Z() - np.array(z_coordinates)*(detector.pixel_size[1])  #in m
 
     wavelength = wavelength*1e10 #Transforming to Å
 
@@ -863,4 +814,55 @@ def single_crystal_orientation(phase, wavelength, detector, sample_detector_dist
 
     print(solution)
     return np.round(solution, 3)
+"""
+
+"""
+def diffraction_direction(Q_hkls, detector, wavelength):
+    #sample_detector_distance is in meters. So dx, dy, dz will be too.
+    
+    beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1])
+
+    tilting_angle = np.radians(detector.tilting_angle)
+
+    sample_detector_distance = detector.sample_detector_distance
+    #print(sample_detector_distance)
+    #print(beam_center)
+
+    wavelength = wavelength*1e10 #Going from m to Å
+
+    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
+    kf_hkls = Q_hkls + ki 
+    
+    dx, dy, dz = np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls)), np.zeros(len(kf_hkls))
+
+    kfxy = kf_hkls.copy()
+    kfxy[:, 2] = 0  # Set the third component to zero for all rows
+
+    kfxz = kf_hkls.copy()
+    kfxz[:, 1] = 0  # Set the second component to zero for all rows
+
+    # Calculate dx
+    dx[kf_hkls[:, 0] > 0] = 1
+
+
+    try:
+        denominator = kfxz[:,0]
+        mask = denominator != 0
+        dz[mask] = ((kfxz[:, 2][mask]/denominator)*sample_detector_distance + beam_center[1])/((kfxz[:, 2][mask]/denominator)* np.sin(tilting_angle) + np.cos(tilting_angle))
+
+    except ZeroDivisionError:
+        pass
+
+    try:
+        denominator = kfxy[:,0]
+        mask = denominator != 0
+
+        dy[mask] = (kfxy[:, 1][mask]/denominator)*(sample_detector_distance - dz[mask] * np.sin(tilting_angle)) + beam_center[0]
+
+    except ZeroDivisionError:
+        pass
+
+    diffracted_information = np.stack((dx, dy, dz), axis=1)
+
+    return diffracted_information
 """

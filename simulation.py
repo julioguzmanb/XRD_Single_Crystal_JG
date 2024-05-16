@@ -57,9 +57,10 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
     diffracted_information = diffracted_information[diffraction_in_detector][:,1:3] #using diffraction in detector mask
     hkls = hkls[diffraction_in_detector] #using diffraction in detector mask
 
-    
+    ###Transforming into pixels
     dy = -diffracted_information[:,0]/detector.pixel_size[0]
-    dz = diffracted_information[:,1]/detector.pixel_size[1]
+    #dz = diffracted_information[:,1]/detector.pixel_size[1]
+    dz = (detector.Max_Detectable_Z()-diffracted_information[:,1])/detector.pixel_size[1] #This is to make the (0,0) the upper left corner
             
     #Creating the dictionnary for storing the data
     data = {}
@@ -79,13 +80,16 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         plt.figure(figsize = (fig_size[0], fig_size[1]))
         plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000,data["wavelength"], data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
         
+        
         if len(hkls) > 1:
             plot.plot_detector(data, colorize = True)
         else:
             plot.plot_detector(data)
+            
         
         if add_guidelines == True and guide_hkls is not None:
             plot.plot_guidelines(guide_hkls, lattice_structure, detector, wavelength)
+        plt.gca().invert_yaxis()
         
     else:
         print("No (hkl) reflections seen in the detector!!")
@@ -131,7 +135,8 @@ def parameter_change_mapping(phase, selected_parameter, initial_param_value, fin
 
             if utils.diffraction_in_detector(diffracted_information, detector) == True: #calling diffraction in detector mask
                 dy = -diffracted_information[:,1:3][:,0]/detector.pixel_size[0]
-                dz = diffracted_information[:,1:3][:,1]/detector.pixel_size[1]
+                #dz = diffracted_information[:,1:3][:,1]/detector.pixel_size[1]
+                dz = (detector.Max_Detectable_Z()-diffracted_information[:,1])/detector.pixel_size[1] #This is to make the (0,0) the upper left corner
 
                 data["dy"].append(dy)
                 data["dz"].append(dz)
@@ -166,6 +171,7 @@ def parameter_change_mapping(phase, selected_parameter, initial_param_value, fin
         plt.scatter(beam_center[0], beam_center[1], label = "Beam Center",marker='x', color='black', s = 100)
 
         plt.legend(title = selected_parameter, loc = "upper right", fontsize = 14, framealpha = 1)
+        plt.gca().invert_yaxis()
 
     
     else:
@@ -305,8 +311,10 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
 
             if len(diffracted_information != 0):
 
+                #Transforming to pixels
                 dy = -diffracted_information[:,0]/detector.pixel_size[0]
-                dz = diffracted_information[:,1]/detector.pixel_size[1]
+                #dz = diffracted_information[:,1]/detector.pixel_size[1]
+                dz = (detector.Max_Detectable_Z()-diffracted_information[:,1])/detector.pixel_size[1] #This is to make the (0,0) the upper left corner
 
                 dys.append(dy)
                 dzs.append(dz)
@@ -320,9 +328,10 @@ def polycrystalline_sample(phase, detector, angular_step, sample_detector_distan
     plt.scatter(dys, dzs, color = "blue", s = 8) 
 
     plt.scatter(beam_center[0], beam_center[1], label = "Beam Center", marker='x', color='black', s = 100)
-
+    plt.gca().invert_yaxis()#
     plt.tight_layout()
     plt.show()
+
 
 
 def powder_sample(phase, detector, sample_detector_distance, wavelength, tilting_angle = 0, margin = 0, beam_center = (0,0), binning = (1,1), hkls = None):
@@ -353,6 +362,7 @@ def powder_sample(phase, detector, sample_detector_distance, wavelength, tilting
 
     plt.scatter(beam_center[0], beam_center[1], label = "Beam Center", marker='x', color='black', s = 100)
 
+    plt.gca().invert_yaxis()
     plt.tight_layout()
     plt.show()
 
