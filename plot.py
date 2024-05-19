@@ -48,14 +48,13 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     - None
       Displays the 3D plot.
     """
-    wavelength = wavelength*1e10
 
     ewald_sphere = utils.Ewald_Sphere(wavelength, E_bandwidth)
-    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
+    ki = np.array([2*np.pi/(wavelength*1e10), 0, 0]).reshape(1, -1)
 
     kf_hkls = Q_hkls + ki
 
-    in_bragg_condition = utils.check_Bragg_condition(Q_hkls, wavelength*1e-10, E_bandwidth)
+    in_bragg_condition = utils.check_Bragg_condition(Q_hkls, wavelength, E_bandwidth)
 
     fig = plt.figure(figsize=(10, 8))
     plt.rcParams.update({'font.size': 15})
@@ -63,12 +62,12 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     ax = fig.add_subplot(111, projection='3d')
 
     for i, (x,y,z) in enumerate(kf_hkls[in_bragg_condition]):
-        ax.scatter(x, y, z, label="(%s)"%(str(hkls.tolist()[i]).replace("[","").replace("]","").replace(",","")), s = 40)  # Plot points with colors
+        ax.scatter(x, y, z, label="(%s)"%(str(hkls[in_bragg_condition].tolist()[i]).replace("[","").replace("]","").replace(",","")), s = 40)  # Plot points with colors
 
     if len(hkls[in_bragg_condition]) > 1:
         Colorize(vector = list(range(len(hkls[in_bragg_condition]))),cmap=plt.cm.jet, ax = ax)
 
-    ax.scatter(0, 0, 0, c='black', label='Ewald Center', s = 100)  # Plot center of Ewald sphere
+    ax.scatter(0, 0, 0, c='black', label='Ewald Sphere Center', s = 100)  # Plot center of Ewald sphere
 
     #ax.legend(fontsize = 13, framealpha = 1, title = "(hkl) in Bragg C.")
     legend = ax.legend(fontsize = 13, framealpha = 1, title = "(hkl) in Bragg c.")
@@ -162,6 +161,7 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     - None
       Displays the diffraction circle guidelines on the detector plot.
     """
+
     # Calculate two theta angles
     two_theta = utils.calculate_two_theta(hkl = hkls, reciprocal_lattice=lattice_structure.reciprocal_lattice, wavelength=wavelength)
 
@@ -203,6 +203,19 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
 
 
 def plot_guidelines(hkls, lattice_structure, detector, wavelength):
+    """
+    Plot diffraction circle guidelines on the detector.
+
+    Parameters:
+    - hkls (numpy.ndarray): Array of Miller indices (hkl) for the diffraction circles.
+    - lattice_structure (Lattice_Structure): Object representing the crystal lattice structure.
+    - detector (Detector): Object representing the detector.
+    - wavelength (float): Wavelength of incident X-ray radiation.
+
+    Returns:
+    - None
+      Displays the diffraction circle guidelines on the detector plot.
+    """
 
     hkls = np.array(hkls)
 
@@ -216,6 +229,18 @@ def plot_guidelines(hkls, lattice_structure, detector, wavelength):
     z = np.outer(r, np.sin(theta)) / detector.pixel_size[1]
 
     def distort_circle(y, z, detector):
+        """
+        Distort circle positions based on detector tilt.
+
+        Parameters:
+        - y (numpy.ndarray): Y-coordinates of circle positions.
+        - z (numpy.ndarray): Z-coordinates of circle positions.
+        - detector (Detector): Object representing the detector.
+
+        Returns:
+        - Y (numpy.ndarray): Distorted Y-coordinates of circle positions.
+        - Z (numpy.ndarray): Distorted Z-coordinates of circle positions.
+        """
         tilting_angle = np.radians(detector.tilting_angle)
         pixel_size = detector.pixel_size
 
@@ -326,4 +351,58 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     fig.show()
 """
 
+"""
+def plot_guidelines(hkls, lattice_structure, detector, wavelength):
+
+    Plot diffraction circle guidelines on the detector.
+
+    Parameters:
+    - hkls (numpy.ndarray): Array of Miller indices (hkl) for the diffraction circles.
+    - lattice_structure (Lattice_Structure): Object representing the crystal lattice structure.
+    - detector (Detector): Object representing the detector.
+    - wavelength (float): Wavelength of incident X-ray radiation.
+
+    Returns:
+    - None
+      Displays the diffraction circle guidelines on the detector plot.
+
+    # Calculate two theta angles
+    two_theta = utils.calculate_two_theta(hkl = hkls, reciprocal_lattice=lattice_structure.reciprocal_lattice, wavelength=wavelength)
+
+    # Calculate distances from sample to detector
+    r = detector.sample_detector_distance*np.tan(np.radians(two_theta))
+
+    # Generate angles
+    theta = np.linspace(0, 2*np.pi, 100)
+
+    # Calculate y and z coordinates for a circle
+    y = r * np.cos(theta)/(-detector.pixel_size[0])
+    z = r * np.sin(theta)/(detector.pixel_size[1])
+
+    # Function to distort circle based on detector parameters
+    def distort_circle(y,z, detector):
+        tilting_angle = np.radians(detector.tilting_angle)
+
+        # Convert y and z coordinates to meters
+        y = y*(-detector.pixel_size[0])
+        z = z*(detector.pixel_size[1])
+
+        # Calculate beam center in meters
+        beam_center = (-detector.beam_center[0]*detector.pixel_size[0], detector.beam_center[1]*detector.pixel_size[1]) #In meters
+
+        # Apply distortion to y and z coordinates
+        Z = (z + beam_center[1])/(z*np.sin(tilting_angle)/detector.sample_detector_distance + np.cos(tilting_angle))
+        Y = ((detector.sample_detector_distance - beam_center[1]*np.tan(tilting_angle))/(detector.sample_detector_distance + z*np.tan(tilting_angle)))*y + beam_center[0]
+        return Y,Z
+    
+    # Apply distortion to circle coordinates
+    Y,Z = distort_circle(y,z, detector)
+
+    # Scale back y and z coordinates
+    Y = Y/(-detector.pixel_size[0])
+    Z = Z/(detector.pixel_size[1])
+
+    # Plot distorted circle as guidelines
+    plt.plot(Y, Z, "--",color = "black", linewidth = 2)
+"""
 
