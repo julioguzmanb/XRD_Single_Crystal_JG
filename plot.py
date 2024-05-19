@@ -48,14 +48,13 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     - None
       Displays the 3D plot.
     """
-    wavelength = wavelength*1e10
 
     ewald_sphere = utils.Ewald_Sphere(wavelength, E_bandwidth)
-    ki = np.array([2*np.pi/wavelength, 0, 0]).reshape(1, -1)
+    ki = np.array([2*np.pi/(wavelength*1e10), 0, 0]).reshape(1, -1)
 
     kf_hkls = Q_hkls + ki
 
-    in_bragg_condition = utils.check_Bragg_condition(Q_hkls, wavelength*1e-10, E_bandwidth)
+    in_bragg_condition = utils.check_Bragg_condition(Q_hkls, wavelength, E_bandwidth)
 
     fig = plt.figure(figsize=(10, 8))
     plt.rcParams.update({'font.size': 15})
@@ -63,12 +62,12 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
     ax = fig.add_subplot(111, projection='3d')
 
     for i, (x,y,z) in enumerate(kf_hkls[in_bragg_condition]):
-        ax.scatter(x, y, z, label="(%s)"%(str(hkls.tolist()[i]).replace("[","").replace("]","").replace(",","")), s = 40)  # Plot points with colors
+        ax.scatter(x, y, z, label="(%s)"%(str(hkls[in_bragg_condition].tolist()[i]).replace("[","").replace("]","").replace(",","")), s = 40)  # Plot points with colors
 
     if len(hkls[in_bragg_condition]) > 1:
         Colorize(vector = list(range(len(hkls[in_bragg_condition]))),cmap=plt.cm.jet, ax = ax)
 
-    ax.scatter(0, 0, 0, c='black', label='Ewald Center', s = 100)  # Plot center of Ewald sphere
+    ax.scatter(0, 0, 0, c='black', label='Ewald Sphere Center', s = 100)  # Plot center of Ewald sphere
 
     #ax.legend(fontsize = 13, framealpha = 1, title = "(hkl) in Bragg C.")
     legend = ax.legend(fontsize = 13, framealpha = 1, title = "(hkl) in Bragg c.")
