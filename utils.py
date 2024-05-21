@@ -123,25 +123,28 @@ def allowed_reflections(phase, hkl):
         
         
     elif phase == "Monoclinic":
+
         if ((h + k)%2 == 0) and (h != 0) and (k != 0) and (l != 0):
             return True
-        
         elif (h == 0) and (k%2 == 0) and (k != 0) and (l != 0):
             return True
-
         elif (k == 0) and (h%2 == 0) and (l%2 == 0) and (h != 0) and (l != 0):
             return True
-
         elif (l == 0) and ((h + k)%2 == 0) and (h != 0) and (k != 0):
             return True
-        
         elif (k == l == 0) and (h%2 == 0):
             return True
-
         elif (h == l == 0) and (k%2 == 0):
             return True
-        
         elif (h == k == 0) and (l%2 == 0):
+            return True
+        elif (h == 2) and (k == 2) and (l == 1): #Magnetic one
+            return True
+        elif (h == -2) and (k == 2) and (l == -1): #Magnetic one
+            return True
+        elif (h == 2) and (k == -2) and (l == 1): #Magnetic one
+            return True
+        elif (h == -2) and (k == -2) and (l == -1): #Magnetic one
             return True
         
     return False
