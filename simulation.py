@@ -124,7 +124,7 @@ def detector(phase, rotx, roty, rotz, detector, sample_detector_distance, wavele
         plt.rcParams.update({'font.size': 14})
         fig_size = (7*abs(detector.Min_Detectable_Y()/detector.Max_Detectable_Z()), 8*abs(detector.Max_Detectable_Z()/detector.Max_Detectable_Z()))
         plt.figure(figsize = (fig_size[0], fig_size[1]))
-        plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000,data["wavelength"], data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
+        plt.title("Detector: %s, $\\phi$ = %s°\nSamp-Det Distance = %s mm\n$\lambda$ = %s Å\nCrystal Phase = %s\n rotations: %s°$\parallel$ x, %s°$\parallel$ y, %s °$\parallel$ z"%(detector.detector_type, np.round(detector.tilting_angle,1), detector.sample_detector_distance*1000, round(data["wavelength"], 5), data["crystal"]["phase"], data["crystal"]["orientation"][0], data["crystal"]["orientation"][1], data["crystal"]["orientation"][2]))
         
         if len(hkls) > 1:
             plot.plot_detector(data, colorize = True)
