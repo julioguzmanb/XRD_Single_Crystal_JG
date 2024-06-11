@@ -80,10 +80,10 @@ def plot_reciprocal(Q_hkls, hkls, wavelength, E_bandwidth):
 
     # Plot Ewald sphere
     u, v = np.mgrid[0:2*np.pi:100j, 0:np.pi:50j]
-    x_ewald = ewald_sphere.Get_Radius() * np.cos(u) * np.sin(v)
-    y_ewald = ewald_sphere.Get_Radius() * np.sin(u) * np.sin(v)
-    z_ewald = ewald_sphere.Get_Radius() * np.cos(v)
-    ax.plot_surface(x_ewald, y_ewald, z_ewald, color='lightgreen', alpha=0.15, linewidth=0)
+    x_ewald = (ewald_sphere.Get_Radius()*1e-10) * np.cos(u) * np.sin(v)
+    y_ewald = (ewald_sphere.Get_Radius()*1e-10) * np.sin(u) * np.sin(v)
+    z_ewald = (ewald_sphere.Get_Radius()*1e-10) * np.cos(v)
+    ax.plot_surface(x_ewald, y_ewald, z_ewald, color='lightgreen', alpha=0.15, linewidth=1)
 
     # Add labels
     ax.set_xlabel('X')
