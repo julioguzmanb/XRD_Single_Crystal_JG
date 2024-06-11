@@ -4,6 +4,7 @@ from scipy.spatial.transform import Rotation as R
 from scipy.optimize import least_squares
 import pyFAI.detectors
 
+
 def energy_to_wavelength(energy):
     """
     Convert energy (in electron volts) to wavelength (in meters).
